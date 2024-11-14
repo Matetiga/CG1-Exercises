@@ -107,3 +107,18 @@ struct sample_set
 	}
 
 };
+
+namespace std
+{
+	template<>
+	struct hash<OpenMesh::SmartFaceHandle>
+	{
+		typedef OpenMesh::SmartFaceHandle argument_type;
+		typedef std::size_t result_type;
+
+		result_type operator()(argument_type const& s) const
+		{
+			return s.idx();
+		}
+	};
+}
