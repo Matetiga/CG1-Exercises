@@ -1,0 +1,14 @@
+# -----------------
+# MAC tasks
+# -----------------
+
+{mac-template-job.yml, BUILDTYPE=debug, LANGUAGE=cpp11}
+{mac-template-job.yml, BUILDTYPE=release, LANGUAGE=cpp11}
+
+{mac-template-job.yml, BUILDTYPE=debug, LANGUAGE=cpp14}
+{mac-template-job.yml, BUILDTYPE=release, LANGUAGE=cpp14}
+
+{mac-m1-template-job.yml, BUILDTYPE=debug, LANGUAGE=cpp14}
+{mac-m1-template-job.yml, BUILDTYPE=release, LANGUAGE=cpp14}
+
+

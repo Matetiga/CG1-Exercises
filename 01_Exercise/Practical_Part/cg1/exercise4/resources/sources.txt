@@ -1,0 +1,3 @@
+grass.jpg: https://www.textures.com/download/grass0053/12098, coloring modified
+rock.jpg: https://www.textures.com/download/soilrough0039/8661
+road: https://www.textures.com/download/3dscans0025/126873
