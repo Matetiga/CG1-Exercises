@@ -19,29 +19,29 @@ void CreateQuad(HEMesh& mesh)
 void CreateCube(HEMesh& mesh)
 {
 	mesh.clear();
-	std::vector<OpenMesh::VertexHandle> vhandles;
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f(-0.5f, -0.5f, 0)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f( 0.5f, -0.5f, 0)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f( 0.5f,  0.5f, 0)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f(-0.5f,  0.5f, 0)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f(-0.5f, -0.5f, 1)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f( 0.5f, -0.5f, 1)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f( 0.5f,  0.5f, 1)));
-	vhandles.push_back(mesh.add_vertex(OpenMesh::Vec3f(-0.5f,  0.5f, 1)));
+	/* Task 1.2.1 */
+	std::vector<OpenMesh::VertexHandle> v(8);
 
+	// front face (+z)
+	v[0] = mesh.add_vertex(OpenMesh::Vec3f(-0.5f, -0.5f, 0.5f)); // 0: front bottom left
+	v[1] = mesh.add_vertex(OpenMesh::Vec3f(0.5f, -0.5f, 0.5f)); // 1: front bottom right
+	v[2] = mesh.add_vertex(OpenMesh::Vec3f(0.5f, 0.5f, 0.5f)); // 2: front top right
+	v[3] = mesh.add_vertex(OpenMesh::Vec3f(-0.5f, 0.5f, 0.5f)); // 3: front top left
 
+	// back face (-z)
+	v[4] = mesh.add_vertex(OpenMesh::Vec3f(-0.5f, -0.5f, -0.5f)); // 4: back bottom left
+	v[5] = mesh.add_vertex(OpenMesh::Vec3f(0.5f, -0.5f, -0.5f)); // 5: back bottom right
+	v[6] = mesh.add_vertex(OpenMesh::Vec3f(0.5f, 0.5f, -0.5f)); // 6: back top right
+	v[7] = mesh.add_vertex(OpenMesh::Vec3f(-0.5f, 0.5f, -0.5f)); // 7: back top left
 
-	// IMPORTANT : the order of each vertex inside this function matters
-	// the order : must be counter-clockwise if the face is looked from above
-	mesh.add_face(vhandles[0], vhandles[1], vhandles[2] , vhandles[3]); //front 
-	mesh.add_face(vhandles[1], vhandles[5], vhandles[6], vhandles[2]); // right
-	mesh.add_face(vhandles[5], vhandles[4], vhandles[7], vhandles[6]); // back 
-	mesh.add_face(vhandles[4], vhandles[0], vhandles[3], vhandles[7]); // left
-	mesh.add_face(vhandles[3], vhandles[2], vhandles[6], vhandles[7]); // top
-	mesh.add_face(vhandles[1], vhandles[0], vhandles[4], vhandles[5]); // bottom
-
+	// faces (quads) - winding chosen to give outward normals
+	mesh.add_face(v[0], v[1], v[2], v[3]); // front
+	mesh.add_face(v[1], v[5], v[6], v[2]); // right
+	mesh.add_face(v[5], v[4], v[7], v[6]); // back
+	mesh.add_face(v[4], v[0], v[3], v[7]); // left
+	mesh.add_face(v[3], v[2], v[6], v[7]); // top
+	mesh.add_face(v[4], v[5], v[1], v[0]); // bottom
 }
-
 
 void CreateTetrahedron(HEMesh& mesh, float a)
 {
@@ -57,7 +57,7 @@ void CreateTetrahedron(HEMesh& mesh, float a)
 	mesh.add_face(vhandles[0], vhandles[1], vhandles[2]);
 	mesh.add_face(vhandles[0], vhandles[2], vhandles[3]);
 	mesh.add_face(vhandles[0], vhandles[3], vhandles[1]);
-	mesh.add_face(vhandles[2], vhandles[1], vhandles[3]);
+	mesh.add_face(vhandles[3], vhandles[2], vhandles[1]);
 }
 
 void CreateDisk(HEMesh& mesh, float radius, int slices)

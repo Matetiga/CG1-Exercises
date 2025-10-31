@@ -11,7 +11,8 @@
 typedef std::map<unsigned, unsigned> ValenceHistogram;
 
 // Container storing the custom mesh property handles required for valence computation
-typedef struct{} VertexValenceProperty; // Task 1.2.3: replace "struct{}" with an appropriate OpenMesh property type
+// Task 1.2.3: use an OpenMesh vertex property handle to store per-vertex valences
+typedef OpenMesh::VPropHandleT<unsigned> VertexValenceProperty;
 
 // Container for referencing the per-vertex valence attributes
 struct VertexValenceProperties
