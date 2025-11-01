@@ -4,7 +4,7 @@
 \usepackage{geometry}
 \geometry{a4paper, margin=1in}
 
-\title{Theory Excersises 1}
+\title{Theory Excercise 1}
 \author{}
 \date{}
 
@@ -145,6 +145,52 @@ P \cdot
 \end{bmatrix}
 = P'_{3\times 1}
 \]
-and $P'$ being the sum of all points ($P'$ as a point itself).
+and $P'$ having the sum of all x,y,z components in their respective row
 
+\subsection*{c)}
+This can be done using the scalar projection formula, as follows:
+\[
+    \frac{(a \cdot b)}{||b||} = projection
+\]
+\begin{itemize}
+    \item a being each point on the matrix P subtracted the vector for the eye 
+    \item b being the view direction $\hat{d}$
+    \item because $\hat{d}$ is a normal vector, then $||b|| = 1$
+\end{itemize}
+\[
+    \hat{d}^{T}_{1x3} \cdot (P_{3xn} - e_{3xn} \cdot 1_{1xn}) 
+\]
+This expression will output a $1xn$ matrix $P_{out}$, which will have the scalar projection of every point onto the viewdirection.
+Then we can iterate through $P_{out}$ to find the min and max values. 
+\begin{itemize}
+    \item $v_{near} = min(P_{out})$
+    \item $v_{far} = max(P_{out})$
+
+\end{itemize}
+
+\subsection*{Calculation with values}
+because $\vec{d}$ is not normalized, normalize it:
+\[
+\hat{d} = \frac{\vec{d}}{\|\vec{d}\|}
+\]
+and
+\[
+\|\vec{d}\| = \sqrt{(-2)^2 + (-1)^2 + (-1)^2} = \sqrt{6}
+\]
+
+\begin{align*}
+& \Rightarrow \frac{\vec{d}^T}{\|\vec{d}\|} \cdot (P_{3x5} - e_{3x1} \cdot 1_{1 \times 5}) \\
+\\
+& \Leftrightarrow \frac{(-2, -1, -1)}{\|\vec{d}\|} \cdot \left( \begin{pmatrix} -1 & 2 & 2 & -1 & 3 \\ -1 & 1 & 1 & -2 & -1 \\ 1 & -2 & -3 & 1 & 0 \end{pmatrix} - \begin{pmatrix} 5 \\ 10 \\ 5 \end{pmatrix} \cdot 1_{1x5} \right) \\
+\\
+& \Leftrightarrow \frac{1}{\sqrt{6}}(-2, -1, -1) \cdot \begin{pmatrix} -6 & -3 & -3 & -6 & -2 \\ -11 & -9 & -9 & -12 & -11 \\ -4 & -7 & -8 & -4 & -5 \end{pmatrix} \\
+\\
+& \Leftrightarrow \left( \frac{9\sqrt{6}}{2}, \: \frac{11\sqrt{6}}{3}, \: \frac{23\sqrt{6}}{6}, \: \frac{14\sqrt{6}}{3}, \: \frac{10\sqrt{6}}{3} \right) \\
+\\
+& \Leftrightarrow (11.02, \: 8.98, \: 9.39, \: 11.43, \: 8.16) = P_{\text{out}} \\
+\\
+& \Rightarrow z_{\text{near}} = \min(P_{\text{out}}) = \frac{10\sqrt{6}}{3} = 8.16 \\
+\\
+& \Rightarrow z_{\text{far}} = \max(P_{\text{out}}) = \frac{14\sqrt{6}}{3} = 11.43
+\end{align*}
 \end{document}
