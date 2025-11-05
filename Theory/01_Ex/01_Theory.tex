@@ -157,11 +157,12 @@ This can be done using the scalar projection formula, as follows:
     \item a being each point on the matrix P subtracted the vector for the eye 
     \item b being the view direction $\hat{d}$
     \item because $\hat{d}$ is a normal vector, then $||b|| = 1$
+    \item then follows:
 \end{itemize}
 \[
-    \hat{d}^{T}_{1x3} \cdot (P_{3xn} - e_{3xn} \cdot 1_{1xn}) 
+    P_{out}=\hat{d}^{T}_{1x3} \cdot (P_{3 \times n} - e_{3 \times 1} \cdot 1_{1 \times n}) 
 \]
-This expression will output a $1xn$ matrix $P_{out}$, which will have the scalar projection of every point onto the viewdirection.
+This expression will output a $1 \times n$ matrix $P_{out}$, which will have the scalar projection of every point onto the viewdirection.
 Then we can iterate through $P_{out}$ to find the min and max values. 
 \begin{itemize}
     \item $v_{near} = min(P_{out})$
