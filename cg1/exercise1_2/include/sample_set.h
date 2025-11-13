@@ -85,7 +85,10 @@ struct sample_set
 	}
 
 	//draw a sample from set
+	// this makes the function be a template
+	// Engine is a template parameter, which allows random number generators (Engines) to be passed in 
 	template <typename Engine>
+	// T is a class template parameter
 	const T& sample(Engine& eng)
 	{	
 		int b = (element_index)(elements.size()-1);
