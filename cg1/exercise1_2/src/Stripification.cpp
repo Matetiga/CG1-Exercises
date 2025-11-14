@@ -14,25 +14,28 @@ struct nav_pointer{
 	int p;
 
 	nav_pointer forward() const{
+
 		// Move to next halfEdge in Zig-State -. prev(inv(hi))
 		if(p == 0){
+			std::cout << "State Forward : 0" << std::endl;
 			if(halfEdge.opp().prev().is_valid())
+				std::cout << "Valid Halfedge" << std::endl;
+			std::cout << "Halfedge idx : " << halfEdge.opp().prev().idx() << std::endl;
+			int face = halfEdge.opp().prev().face().idx();
+			std::cout << "Face idx : " << face << std::endl;
 				return {halfEdge.opp().prev(), 1};
 		}
 		// Move to next halfEdge in Zag-State -. next(inv(hi))
 		else{
+			std::cout << "State Forward : 1" << std::endl;
 			if(halfEdge.opp().next().is_valid())
 				return {halfEdge.opp().next(), 0};
 			
 		}
-
-		// ToDo: what should be returned if there is no valid next halfEdge?
-		return {OpenMesh::SmartHalfedgeHandle(), -1};
+		std::cout << "State Forward : Invalid" << std::endl;
+		return { halfEdge, -1 };
 	}
 	nav_pointer backward() const{
-		if (!halfEdge.is_valid() || !halfEdge.opp().is_valid())
-			return {OpenMesh::SmartHalfedgeHandle(), -1};
-
 		if(p == 0){
 			if (halfEdge.prev().opp().is_valid())
 				return {halfEdge.prev().opp(), 1};	
@@ -42,12 +45,23 @@ struct nav_pointer{
 				return {halfEdge.next().opp(), 0};
 		}
 
-		return {OpenMesh::SmartHalfedgeHandle(), -1};
+		return { halfEdge, -1 };
 	}
 };
 
+// hash function for pair<int, int >
+struct pair_hash {
+	// operator() makes the struct callable like a function
+	std::size_t operator () (const std::pair<int, int>& p) const {
+		auto h1 = std::hash<int>{}(p.first);
+		auto h2 = std::hash<int>{}(p.second);
 
-unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceStripIdProperty, unsigned int nTrials)
+		// custom hash 
+		return h1 ^ (h2 << 1);
+	}
+};
+
+ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceStripIdProperty, unsigned int nTrials)
 {
 	//prepare random number generator engine
 	std::mt19937 eng;
@@ -86,6 +100,9 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 		availableTriangles.insert(f.idx());
 	}
 
+	// maps require a hash function and there is no builtin function for pairs
+	std::unordered_map<std::pair<int, int>, std::unordered_set<int>, pair_hash> cached_triangles;
+
 	 	// until all triangles are processed and assigned to a strip
 	while(!availableTriangles.empty()){
 		// this pointer should store the longest strip found in nTrials
@@ -99,7 +116,7 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 			for (auto seed_start_he : mesh.fh_range(seed_fh)){
 
 				std::vector<int> current_best_strip;
-				// change to other ZigZag state
+				// change to other ZigZag state (which is necessary -> to explore all options)
 				for(int n = 0; n < 2; n++){
 					nav_pointer start_pointer = {make_smart(seed_start_he, &mesh), n};
 	
@@ -107,16 +124,27 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 					OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
 					start_pointer.halfEdge = make_smart(he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
 		
+					// First check for cached results
+					std::pair<int, int> key = { start_pointer.halfEdge.idx(), n};
+					if (cached_triangles.find(key) != cached_triangles.end()) {
+						std::unordered_set<int> cached_faces = cached_triangles[key];
+						if (cached_faces.size() > longest_strip.size()) {
+							longest_strip.assign(cached_faces.begin(), cached_faces.end());
+						}
+						continue; 
+					}
 
 					std::unordered_set<int> faces_in_current_strip;
 
 					nav_pointer current_pointer = start_pointer;
 					while (true){
 						nav_pointer temp_pointer = current_pointer.forward();
-						
+						int id = temp_pointer.halfEdge.face().idx();
+						bool check = mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1? true : false;
+
 						std::cout << "First While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
 						if(!temp_pointer.halfEdge.is_valid() || // invalid halfEdge
-							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 || // already assigned to a strip
+							//mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 || // already assigned to a strip
 							faces_in_current_strip.count(temp_pointer.halfEdge.face().idx()) > 0){ // already in current strip (to avoid cycles)
  								break;
 							}
@@ -150,8 +178,15 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 					if(faces_in_current_strip.size() > longest_strip.size()){
 						longest_strip.assign(faces_in_current_strip.begin(), faces_in_current_strip.end());
 					}
+					
+					// add faces to cache
+					cached_triangles[key] = faces_in_current_strip;
+					
+					
 				}
-			}
+			} // end of for loop over halfedges
+
+
 		}
 		if (!longest_strip.empty()) {
 			for(auto f_idx : longest_strip){
@@ -160,11 +195,11 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 			}
 			nStrips++;
 		} else if (!availableTriangles.empty()) {
-            // Handle leftover isolated triangles that can't form strips
-            int f_idx = availableTriangles.sample(eng);
-            mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips++;
-            availableTriangles.remove(f_idx);
-        }
+			// Handle leftover isolated triangles that can't form strips
+			int f_idx = availableTriangles.sample(eng);
+			mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips++;
+			availableTriangles.remove(f_idx);
+		}
 
 		// for(auto f_idx : longest_strip){
 		// 	// asign the strip id to the face (nStrips acts as id)
