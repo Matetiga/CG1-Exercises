@@ -14,7 +14,6 @@ struct nav_pointer{
 	int p;
 
 	nav_pointer forward() const{
-		//if (!halfEdge.is_valid()) return { OpenMesh::SmartHalfedgeHandle(), -1 };
 		// Move to next halfEdge in Zig-State -. prev(inv(hi))
 		if(p == 0){
 			if (halfEdge.opp().prev().is_valid()) {
@@ -32,7 +31,6 @@ struct nav_pointer{
 
 	}
 	nav_pointer backward() const{
-		//if (!halfEdge.is_valid()) return { OpenMesh::SmartHalfedgeHandle(), -1 };
 		if(p == 0){
 			if (halfEdge.prev().opp().is_valid()) {
 				return {halfEdge.prev().opp(), 1};	
@@ -48,17 +46,6 @@ struct nav_pointer{
 	}
 };
 
-// hash function for pair<int, int >
-struct pair_hash {
-	// operator() makes the struct callable like a function
-	std::size_t operator () (const std::pair<int, int>& p) const {
-		auto h1 = std::hash<int>{}(p.first);
-		auto h2 = std::hash<int>{}(p.second);
-
-		// custom hash 
-		return h1 ^ (h2 << 1);
-	}
-};
 
  unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceStripIdProperty, unsigned int nTrials)
 {
@@ -99,9 +86,6 @@ struct pair_hash {
 		availableTriangles.insert(f.idx());
 	}
 
-	// maps require a hash function and there is no builtin function for pairs
-	std::unordered_map<std::pair<int, int>, std::unordered_set<int>, pair_hash> cached_triangles;
-
 	 	// until all triangles are processed and assigned to a strip
 	while(!availableTriangles.empty()){
 		// this pointer should store the longest strip found in nTrials
@@ -112,11 +96,11 @@ struct pair_hash {
 		for(int i = 0; i < actual_trials; i++){
 			if (availableTriangles.empty())
 				break;
+
 			int seed = availableTriangles.sample(eng);
 			OpenMesh::FaceHandle seed_fh = mesh.face_handle(seed);
 
 			// this will iterate through all halfedges of the seed face (3 in total pro triangle)
-			// IMPORTANT : Why are the results the same for all shapes if i < 1 or i < 3 ?
 			OpenMesh::HalfedgeHandle seed_he = mesh.halfedge_handle(seed_fh);
 			for (int i = 0; i < 3; i++) {
 				//std::cout << "Current seed haldedge idx : " << seed_he.idx() << std::endl;
@@ -126,20 +110,8 @@ struct pair_hash {
 					nav_pointer start_pointer = {make_smart(seed_he, &mesh), n};
 	
 					// find the halfedge handle of the seed 
-					//OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
 					start_pointer.halfEdge = make_smart(seed_he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
-		
-					// First check for cached results
-					std::pair<int, int> key = { start_pointer.halfEdge.idx(), n};
-					if (cached_triangles.find(key) != cached_triangles.end()) {
-						std::unordered_set<int> cached_faces = cached_triangles[key];
-						if (cached_faces.size() > longest_strip.size()) {
-							longest_strip.assign(cached_faces.begin(), cached_faces.end());
-						}
-						//std::cout << "Using cached result for key (" << key.first << ", " << key.second << ")" << std::endl;
-						continue; 
-					}
-
+	
 					std::unordered_set<int> faces_in_current_strip;
 					faces_in_current_strip.insert(seed_fh.idx());
 
@@ -184,14 +156,9 @@ struct pair_hash {
 
 					// check if this is the best seed so far (greedy choice)
 					if(faces_in_current_strip.size() > longest_strip.size()){
-						for (int index : faces_in_current_strip) {
-							longest_strip.push_back(index);
-						}
+						// this will clear longest_strip and copy the new best one (the previous implementation with for loop missed that)
+						longest_strip.assign(faces_in_current_strip.begin(), faces_in_current_strip.end());
 					}
-					
-					// add faces to cache
-					cached_triangles[key] = faces_in_current_strip;
-					
 					
 				}
 				// this should get the next halfedge of the seed face
