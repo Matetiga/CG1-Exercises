@@ -14,38 +14,37 @@ struct nav_pointer{
 	int p;
 
 	nav_pointer forward() const{
-
+		//if (!halfEdge.is_valid()) return { OpenMesh::SmartHalfedgeHandle(), -1 };
 		// Move to next halfEdge in Zig-State -. prev(inv(hi))
 		if(p == 0){
-			std::cout << "State Forward : 0" << std::endl;
-			if(halfEdge.opp().prev().is_valid())
-				std::cout << "Valid Halfedge" << std::endl;
-			std::cout << "Halfedge idx : " << halfEdge.opp().prev().idx() << std::endl;
-			int face = halfEdge.opp().prev().face().idx();
-			std::cout << "Face idx : " << face << std::endl;
+			if (halfEdge.opp().prev().is_valid()) {
 				return {halfEdge.opp().prev(), 1};
+			}
 		}
 		// Move to next halfEdge in Zag-State -. next(inv(hi))
 		else{
-			std::cout << "State Forward : 1" << std::endl;
-			if(halfEdge.opp().next().is_valid())
+			if (halfEdge.opp().next().is_valid()) {
 				return {halfEdge.opp().next(), 0};
-			
+			}
 		}
-		std::cout << "State Forward : Invalid" << std::endl;
-		return { halfEdge, -1 };
+		// this should return an invalid halfEdgeHandle
+		return { OpenMesh::SmartHalfedgeHandle(), -1};
+
 	}
 	nav_pointer backward() const{
+		//if (!halfEdge.is_valid()) return { OpenMesh::SmartHalfedgeHandle(), -1 };
 		if(p == 0){
-			if (halfEdge.prev().opp().is_valid())
+			if (halfEdge.prev().opp().is_valid()) {
 				return {halfEdge.prev().opp(), 1};	
+			}
 		}
-		else{
-			if (halfEdge.next().opp().is_valid())
-				return {halfEdge.next().opp(), 0};
+		else {
+			if (halfEdge.next().opp().is_valid()) {
+				return { halfEdge.next().opp(), 0 };
+			}
 		}
 
-		return { halfEdge, -1 };
+		return { OpenMesh::SmartHalfedgeHandle(), -1 };
 	}
 };
 
@@ -108,21 +107,27 @@ struct pair_hash {
 		// this pointer should store the longest strip found in nTrials
 		std::vector<int> longest_strip;
 
-		for(int i = 0; i < nTrials; i++){
+		// this reduces unnecessary trials 
+		int actual_trials = std::min(nTrials, (unsigned int)availableTriangles.size());
+		for(int i = 0; i < actual_trials; i++){
+			if (availableTriangles.empty())
+				break;
 			int seed = availableTriangles.sample(eng);
 			OpenMesh::FaceHandle seed_fh = mesh.face_handle(seed);
 
 			// this will iterate through all halfedges of the seed face (3 in total pro triangle)
-			for (auto seed_start_he : mesh.fh_range(seed_fh)){
+			// IMPORTANT : Why are the results the same for all shapes if i < 1 or i < 3 ?
+			OpenMesh::HalfedgeHandle seed_he = mesh.halfedge_handle(seed_fh);
+			for (int i = 0; i < 3; i++) {
+				//std::cout << "Current seed haldedge idx : " << seed_he.idx() << std::endl;
 
-				std::vector<int> current_best_strip;
 				// change to other ZigZag state (which is necessary -> to explore all options)
 				for(int n = 0; n < 2; n++){
-					nav_pointer start_pointer = {make_smart(seed_start_he, &mesh), n};
+					nav_pointer start_pointer = {make_smart(seed_he, &mesh), n};
 	
 					// find the halfedge handle of the seed 
-					OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
-					start_pointer.halfEdge = make_smart(he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
+					//OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
+					start_pointer.halfEdge = make_smart(seed_he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
 		
 					// First check for cached results
 					std::pair<int, int> key = { start_pointer.halfEdge.idx(), n};
@@ -131,20 +136,23 @@ struct pair_hash {
 						if (cached_faces.size() > longest_strip.size()) {
 							longest_strip.assign(cached_faces.begin(), cached_faces.end());
 						}
+						//std::cout << "Using cached result for key (" << key.first << ", " << key.second << ")" << std::endl;
 						continue; 
 					}
 
 					std::unordered_set<int> faces_in_current_strip;
+					faces_in_current_strip.insert(seed_fh.idx());
 
 					nav_pointer current_pointer = start_pointer;
 					while (true){
 						nav_pointer temp_pointer = current_pointer.forward();
 						int id = temp_pointer.halfEdge.face().idx();
-						bool check = mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1? true : false;
 
-						std::cout << "First While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
+						//std::cout << "First While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
 						if(!temp_pointer.halfEdge.is_valid() || // invalid halfEdge
-							//mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 || // already assigned to a strip
+							!temp_pointer.halfEdge.face().is_valid() ||
+							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 ||
+							// this check should be necessary to prevent loops 
 							faces_in_current_strip.count(temp_pointer.halfEdge.face().idx()) > 0){ // already in current strip (to avoid cycles)
  								break;
 							}
@@ -156,27 +164,29 @@ struct pair_hash {
 		
 					}
 		
-					std::vector<int> backward_faces;
 					// reset nav pointer
 					current_pointer = start_pointer;
 					while(true){
 						nav_pointer temp_pointer = current_pointer.backward();
-						std::cout << "Second While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
+						//std::cout << "Second While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
 
 						if(!temp_pointer.halfEdge.is_valid() || // invalid halfEdge
+							!temp_pointer.halfEdge.face().is_valid() ||
 							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 ||
 							faces_in_current_strip.count(temp_pointer.halfEdge.face().idx()) > 0){
 								break;
 							}
 
 
-						faces_in_current_strip.insert(current_pointer.halfEdge.face().idx());
+						faces_in_current_strip.insert(temp_pointer.halfEdge.face().idx());
 						current_pointer = temp_pointer;
 					}
 
 					// check if this is the best seed so far (greedy choice)
 					if(faces_in_current_strip.size() > longest_strip.size()){
-						longest_strip.assign(faces_in_current_strip.begin(), faces_in_current_strip.end());
+						for (int index : faces_in_current_strip) {
+							longest_strip.push_back(index);
+						}
 					}
 					
 					// add faces to cache
@@ -184,32 +194,21 @@ struct pair_hash {
 					
 					
 				}
+				// this should get the next halfedge of the seed face
+				seed_he = mesh.next_halfedge_handle(seed_he);
 			} // end of for loop over halfedges
 
-
 		}
+
 		if (!longest_strip.empty()) {
-			for(auto f_idx : longest_strip){
+			for (int f_idx : longest_strip) {
 				mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips;
-				availableTriangles.remove(f_idx);
+				bool var = availableTriangles.remove(f_idx);
+				//std::cout << "removing Index" << f_idx << "state : " << var << std::endl;
 			}
 			nStrips++;
-		} else if (!availableTriangles.empty()) {
-			// Handle leftover isolated triangles that can't form strips
-			int f_idx = availableTriangles.sample(eng);
-			mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips++;
-			availableTriangles.remove(f_idx);
 		}
-
-		// for(auto f_idx : longest_strip){
-		// 	// asign the strip id to the face (nStrips acts as id)
-		// 	mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips;
-			
-		// 	availableTriangles.remove(f_idx);
-		// }
-		
-		// nStrips++;
-
+	
 	}
 
 
