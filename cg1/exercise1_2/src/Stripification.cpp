@@ -100,8 +100,8 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 
 				std::vector<int> current_best_strip;
 				// change to other ZigZag state
-				for(int n = 0; n < 2; n++){
-					nav_pointer start_pointer = {make_smart(seed_start_he, &mesh), n};
+				// for(int n = 0; n < 2; n++){
+					nav_pointer start_pointer = {make_smart(seed_start_he, &mesh), 0};
 	
 					// find the halfedge handle of the seed 
 					OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
@@ -149,7 +149,7 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 					// check if this is the best seed so far (greedy choice)
 					if(faces_in_current_strip.size() > longest_strip.size()){
 						longest_strip.assign(faces_in_current_strip.begin(), faces_in_current_strip.end());
-					}
+					// }
 				}
 			}
 		}
@@ -159,7 +159,7 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 				availableTriangles.remove(f_idx);
 			}
 			nStrips++;
-		} else if (!availableTriangles.empty()) {
+		} else if (!availableTriangles.empty()) { //otherwise infinite loop
             // Handle leftover isolated triangles that can't form strips
             int f_idx = availableTriangles.sample(eng);
             mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips++;
