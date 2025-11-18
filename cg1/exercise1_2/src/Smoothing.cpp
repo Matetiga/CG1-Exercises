@@ -10,6 +10,31 @@
 void SmoothUniformLaplacian (HEMesh &m, float lambda)
 {
 	/*Task 2.2.3*/
+	// Uniform discrete Laplacian smoothing
+		// Uniform Laplacian means that the new position is based on the difference between the current position and the average position of the neighbors
+		// so the new point will be centered relative to its neighbors
+
+	// 𝒑𝑖 ← 𝒑𝑖 + Δt ∙ 𝛼 ∙ Δs * p𝑖
+	// with : Δs *p𝑖 = -2H n 
+		// (n as the surface normal) (H as the mean curvature)
+
+	for(auto vertex : m.vertices()){
+		OpenMesh::Vec3f average(0.f, 0.f, 0.f);
+		unsigned int num_neightbors = 0;
+		std::cout << "Vertex idx : " << vertex.idx() << std::endl;
+
+		// iterate through neigbors 
+		for (auto neighbor : m.vv_range(vertex)) {
+			std::cout << "   Neighbor idx : "<< neighbor.idx()<< " with points : " << m.point(neighbor) << std::endl;
+			average += m.point(neighbor);
+			num_neightbors += 1;
+		}
+		std::cout << "current average before division : " << average << std::endl;
+		average /= (float) num_neightbors;
+		m.point(vertex) = m.point(vertex) + lambda * average;
+	}
+
+	
 }
 
 void SmoothCotanLaplacian (HEMesh &m, float lambda)
