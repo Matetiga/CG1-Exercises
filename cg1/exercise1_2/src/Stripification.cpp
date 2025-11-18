@@ -16,38 +16,38 @@ struct nav_pointer{
 	nav_pointer forward() const{
 		// Move to next halfEdge in Zig-State -. prev(inv(hi))
 		if(p == 0){
-			if(halfEdge.opp().prev().is_valid())
+			if (halfEdge.opp().prev().is_valid()) {
 				return {halfEdge.opp().prev(), 1};
+			}
 		}
 		// Move to next halfEdge in Zag-State -. next(inv(hi))
 		else{
-			if(halfEdge.opp().next().is_valid())
+			if (halfEdge.opp().next().is_valid()) {
 				return {halfEdge.opp().next(), 0};
-			
+			}
 		}
+		// this should return an invalid halfEdgeHandle
+		return { OpenMesh::SmartHalfedgeHandle(), -1};
 
-		// ToDo: what should be returned if there is no valid next halfEdge?
-		return {OpenMesh::SmartHalfedgeHandle(), -1};
 	}
 	nav_pointer backward() const{
-		if (!halfEdge.is_valid() || !halfEdge.opp().is_valid())
-			return {OpenMesh::SmartHalfedgeHandle(), -1};
-
 		if(p == 0){
-			if (halfEdge.prev().opp().is_valid())
+			if (halfEdge.prev().opp().is_valid()) {
 				return {halfEdge.prev().opp(), 1};	
+			}
 		}
-		else{
-			if (halfEdge.next().opp().is_valid())
-				return {halfEdge.next().opp(), 0};
+		else {
+			if (halfEdge.next().opp().is_valid()) {
+				return { halfEdge.next().opp(), 0 };
+			}
 		}
 
-		return {OpenMesh::SmartHalfedgeHandle(), -1};
+		return { OpenMesh::SmartHalfedgeHandle(), -1 };
 	}
 };
 
 
-unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceStripIdProperty, unsigned int nTrials)
+ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceStripIdProperty, unsigned int nTrials)
 {
 	//prepare random number generator engine
 	std::mt19937 eng;
@@ -91,32 +91,40 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 		// this pointer should store the longest strip found in nTrials
 		std::vector<int> longest_strip;
 
-		for(int i = 0; i < nTrials; i++){
+		// this reduces unnecessary trials 
+		int actual_trials = std::min(nTrials, (unsigned int)availableTriangles.size());
+		for(int i = 0; i < actual_trials; i++){
+			if (availableTriangles.empty())
+				break;
+
 			int seed = availableTriangles.sample(eng);
 			OpenMesh::FaceHandle seed_fh = mesh.face_handle(seed);
 
 			// this will iterate through all halfedges of the seed face (3 in total pro triangle)
-			for (auto seed_start_he : mesh.fh_range(seed_fh)){
+			OpenMesh::HalfedgeHandle seed_he = mesh.halfedge_handle(seed_fh);
+			for (int i = 0; i < 3; i++) {
+				//std::cout << "Current seed haldedge idx : " << seed_he.idx() << std::endl;
 
-				std::vector<int> current_best_strip;
-				// change to other ZigZag state
-				// for(int n = 0; n < 2; n++){
-					nav_pointer start_pointer = {make_smart(seed_start_he, &mesh), 0};
+				// change to other ZigZag state (which is necessary -> to explore all options)
+				for(int n = 0; n < 2; n++){
+					nav_pointer start_pointer = {make_smart(seed_he, &mesh), n};
 	
 					// find the halfedge handle of the seed 
-					OpenMesh::HalfedgeHandle he  = mesh.halfedge_handle(mesh.face_handle(seed));
-					start_pointer.halfEdge = make_smart(he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
-		
-
+					start_pointer.halfEdge = make_smart(seed_he, &mesh); // to transform it to SmartHalfedgeHandle and have movility
+	
 					std::unordered_set<int> faces_in_current_strip;
+					faces_in_current_strip.insert(seed_fh.idx());
 
 					nav_pointer current_pointer = start_pointer;
 					while (true){
 						nav_pointer temp_pointer = current_pointer.forward();
-						
-						std::cout << "First While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
+						int id = temp_pointer.halfEdge.face().idx();
+
+						//std::cout << "First While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
 						if(!temp_pointer.halfEdge.is_valid() || // invalid halfEdge
-							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 || // already assigned to a strip
+							!temp_pointer.halfEdge.face().is_valid() ||
+							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 ||
+							// this check should be necessary to prevent loops 
 							faces_in_current_strip.count(temp_pointer.halfEdge.face().idx()) > 0){ // already in current strip (to avoid cycles)
  								break;
 							}
@@ -128,53 +136,46 @@ unsigned int ExtractTriStrips(HEMesh& mesh, OpenMesh::FPropHandleT<int> perFaceS
 		
 					}
 		
-					std::vector<int> backward_faces;
 					// reset nav pointer
 					current_pointer = start_pointer;
 					while(true){
 						nav_pointer temp_pointer = current_pointer.backward();
-						std::cout << "Second While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
+						//std::cout << "Second While Loop : Temp pointer " << temp_pointer.halfEdge.idx() << std::endl;	
 
 						if(!temp_pointer.halfEdge.is_valid() || // invalid halfEdge
+							!temp_pointer.halfEdge.face().is_valid() ||
 							mesh.property(perFaceStripIdProperty, temp_pointer.halfEdge.face()) != -1 ||
 							faces_in_current_strip.count(temp_pointer.halfEdge.face().idx()) > 0){
 								break;
 							}
 
 
-						faces_in_current_strip.insert(current_pointer.halfEdge.face().idx());
+						faces_in_current_strip.insert(temp_pointer.halfEdge.face().idx());
 						current_pointer = temp_pointer;
 					}
 
 					// check if this is the best seed so far (greedy choice)
 					if(faces_in_current_strip.size() > longest_strip.size()){
+						// this will clear longest_strip and copy the new best one (the previous implementation with for loop missed that)
 						longest_strip.assign(faces_in_current_strip.begin(), faces_in_current_strip.end());
-					// }
+					}
+					
 				}
-			}
+				// this should get the next halfedge of the seed face
+				seed_he = mesh.next_halfedge_handle(seed_he);
+			} // end of for loop over halfedges
+
 		}
+
 		if (!longest_strip.empty()) {
-			for(auto f_idx : longest_strip){
+			for (int f_idx : longest_strip) {
 				mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips;
-				availableTriangles.remove(f_idx);
+				bool var = availableTriangles.remove(f_idx);
+				//std::cout << "removing Index" << f_idx << "state : " << var << std::endl;
 			}
 			nStrips++;
-		} else if (!availableTriangles.empty()) { //otherwise infinite loop
-            // Handle leftover isolated triangles that can't form strips
-            int f_idx = availableTriangles.sample(eng);
-            mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips++;
-            availableTriangles.remove(f_idx);
-        }
-
-		// for(auto f_idx : longest_strip){
-		// 	// asign the strip id to the face (nStrips acts as id)
-		// 	mesh.property(perFaceStripIdProperty, mesh.face_handle(f_idx)) = nStrips;
-			
-		// 	availableTriangles.remove(f_idx);
-		// }
-		
-		// nStrips++;
-
+		}
+	
 	}
 
 
