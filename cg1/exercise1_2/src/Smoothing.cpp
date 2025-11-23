@@ -56,78 +56,64 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 		// 	boundary conditions -> boundary vertices wont be updates
 
 	//m.request_vertex_normals();
-	std::map<std::pair<OpenMesh::SmartHalfedgeHandle, OpenMesh::SmartHalfedgeHandle>, float> cached_angles;
 	std::map<OpenMesh::VertexHandle, OpenMesh::Vec3f> updated_pos;
 	for (auto vertex : m.vertices()) {
 
 		if (m.is_boundary(vertex)) {
 			// same position 
 			updated_pos[vertex] = m.point(vertex);
-			std::cout << "boundary" << std::endl;
 			continue;
 		}
 
 		// to calculate the Voronoi area
 		float area = 0.f;
+		OpenMesh::Vec3f laplace_beltrami(0.f, 0.f, 0.f);
 
 		// this will get the outgoing halfedges from vertex
 		for (auto neighbor : m.voh_range(vertex)) {
-			// this should get the two halfedges of the two triangles sharing the edge
-			OpenMesh::SmartHalfedgeHandle neighbor1 = neighbor.opp().prev();
+
+			// this will get the halfedge pointing to a vertex which is opposite to the edge 
+			// opp().prev().prev() should be the same as opp().next()
+			OpenMesh::SmartHalfedgeHandle neighbor1 = neighbor.opp().next();
 			OpenMesh::SmartHalfedgeHandle neighbor2 = neighbor.next();
-			/*	if (!neighbor1.is_valid() || !neighbor2.is_valid()) {
-					continue;
-				}*/
-			std::cout << "Neighbor1 Face: " << neighbor1.face().idx() << ", Neighbor2 Face: " << neighbor2.face().idx() << std::endl;
 
 			// the angles are returned in radians
-			// this should get the angle opposite of the edge of the triangle 1 
+			// get the angles of the vertex opp to the edge 
+			// this calculates the angle of the vertex to whicht the halfedge points
 			auto alpha = m.calc_sector_angle(neighbor1);
-			// angle of triangle 2
 			auto beta = m.calc_sector_angle(neighbor2);
 
-			std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
+			//std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
 			// skip obtuse angles (90 < a < 180)
 			if (alpha > M_PI_2 || beta > M_PI_2) {
 				continue;
 			}
 
 			// cot(x) = 1/ tan(x)
-			// (cot(alpha) + cot(beta)) 
-			float angle_sum = 1.f / (tan(alpha)) + 1.f / (tan(beta));
-			cached_angles[{neighbor1, neighbor2}] = angle_sum;
-			// this will get the lenght between vertex and neighbor and square it
-			// (p_j - p_i)^2 
-			//float point_diff =  pow(m.calc_edge_length(neighbor),2) ;
-			//area += angle_sum * point_diff;
-			area += angle_sum * pow(m.calc_edge_length(neighbor), 2) / 8.f;
-		}
-		//area *= 0.8f;
+			float cot_alpha = 1.f / (tan(alpha));
+			float cot_beta = 1.f / (tan(beta));
+			std::cout << "Cot Alpha: " << cot_alpha << ", Cot Beta: " << cot_beta << std::endl;
+			float angle_sum = cot_alpha + cot_beta;
 
-		// To calculate the Laplace Beltrami Operator
-		// exact same code as before
-		OpenMesh::Vec3f laplace_beltrami(0.f, 0.f, 0.f);
-		for (auto neighbor : m.voh_range(vertex)) {
-			// this can be faster if a map is implemented 
-			OpenMesh::SmartHalfedgeHandle neighbor1 = neighbor.opp().prev();
-			OpenMesh::SmartHalfedgeHandle neighbor2 = neighbor.next();
-			float angle_sum;
-			if (cached_angles.find({ neighbor1, neighbor2 }) != cached_angles.end()) {
-				angle_sum = cached_angles[{neighbor1, neighbor2}];
-			}
-			else {
-				// the angle was not cached -> obtuse angle, so skipp
-				continue;
-			}
+			// (f_j - f_i)
+			OpenMesh::Vec3f vector_difference = m.point(neighbor.to()) - m.point(vertex);
+			laplace_beltrami += angle_sum * vector_difference;
 
-			// m.oint(neighbor.to()) will get the vertex to which the halfedge is pointing
-			auto neig_point = m.point(neighbor.to());
-			auto vert_point = m.point(vertex);
-			std::cout << "Neighbor Point: " << neig_point << ", Vertex Point: " << vert_point << std::endl;
-			laplace_beltrami += angle_sum* (m.point(neighbor.to()) - m.point(vertex));
+			// || p_i - p_j ||^2
+			float edge_length = m.calc_edge_length(neighbor);
+			std::cout << "Edge Length: " << edge_length << std::endl;
+			area += angle_sum * pow(edge_length, 2) / 8.f;
 		}
-		std::cout << "Current area" << area << std::endl;
-		if (area > 0.1) {
+
+		// TODO : Current Problem is for areas that are too small
+		// for example for cylinder top and bottom faces, edges are streching beyond the edges
+		// this means area gegen 0, so division by zero problem
+		if (area < 0.1) {
+			std::cout << "Small area detected: " << area << std::endl;
+			area = 1.f;
+		}
+		std::cout << "Current area " << area << std::endl;
+		if (area >= 1.f) {
 			laplace_beltrami /= (2.f * area);
 			updated_pos[vertex] = m.point(vertex) + lambda * laplace_beltrami;
 		}
@@ -135,13 +121,6 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 		else {
 			updated_pos[vertex] = m.point(vertex);
 		}
-		// get the normal of the vertex
-		//OpenMesh::Vec3f normal = m.normal(vertex);
-		//float normal_component = laplace_beltrami.dot(normal);
-		
-		// updated pos 
-		//updated_pos[vertex] = m.point(vertex) + lambda * normal_component * normal;
-
 	}
 
 	// update all positions
@@ -149,6 +128,8 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 		m.point(vertex) = pos;
 	}
 
+	std::cout << "End" << std::endl;
+		
 
 }
 
