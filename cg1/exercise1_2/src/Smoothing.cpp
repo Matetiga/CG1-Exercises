@@ -59,14 +59,17 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 	std::map<OpenMesh::VertexHandle, OpenMesh::Vec3f> updated_pos;
 	for (auto vertex : m.vertices()) {
 
+
+		// PROBLEM : the vertices of the top and bottom faces of the cylinder are not evaluating to true  
 		if (m.is_boundary(vertex)) {
+			std::cout << "boundaty" << std::endl;
 			// same position 
 			updated_pos[vertex] = m.point(vertex);
 			continue;
 		}
 
 		// to calculate the Voronoi area
-		float area = 0.f;
+		double area = 0.f;
 		OpenMesh::Vec3f laplace_beltrami(0.f, 0.f, 0.f);
 
 		// this will get the outgoing halfedges from vertex
@@ -77,15 +80,17 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 			OpenMesh::SmartHalfedgeHandle neighbor1 = neighbor.opp().next();
 			OpenMesh::SmartHalfedgeHandle neighbor2 = neighbor.next();
 
+
 			// the angles are returned in radians
 			// get the angles of the vertex opp to the edge 
 			// this calculates the angle of the vertex to whicht the halfedge points
 			auto alpha = m.calc_sector_angle(neighbor1);
 			auto beta = m.calc_sector_angle(neighbor2);
 
-			//std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
+			std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
 			// skip obtuse angles (90 < a < 180)
 			if (alpha > M_PI_2 || beta > M_PI_2) {
+				std::cout << "skipping" << std::endl;				
 				continue;
 			}
 
@@ -102,19 +107,22 @@ void SmoothCotanLaplacian (HEMesh &m, float lambda)
 			// || p_i - p_j ||^2
 			float edge_length = m.calc_edge_length(neighbor);
 			std::cout << "Edge Length: " << edge_length << std::endl;
-			area += angle_sum * pow(edge_length, 2) / 8.f;
+			std::cout << "Angle Sum: " << angle_sum << std::endl;
+			float sumand = angle_sum * pow(edge_length, 2) / 8.f;
+			area += sumand;
+			std::cout << "Current Area Contribution: " << sumand << std::endl;
 		}
 
 		// TODO : Current Problem is for areas that are too small
 		// for example for cylinder top and bottom faces, edges are streching beyond the edges
 		// this means area gegen 0, so division by zero problem
-		if (area < 0.1) {
-			std::cout << "Small area detected: " << area << std::endl;
-			area = 1.f;
-		}
+		// if (area < 0.1) {
+		// 	std::cout << "Small area : " << area << std::endl;
+		// 	area = 1.f;
+		// }
 		std::cout << "Current area " << area << std::endl;
-		if (area >= 1.f) {
-			laplace_beltrami /= (2.f * area);
+		if (area >= 0.1f) {
+			laplace_beltrami /= (2.f * area); // main problem ? 
 			updated_pos[vertex] = m.point(vertex) + lambda * laplace_beltrami;
 		}
 		// otherwise could cause problem with points going far beyond the edge (cylinder had this issue)
