@@ -47,7 +47,96 @@ void SmoothUniformLaplacian (HEMesh &m, float lambda)
 void SmoothCotanLaplacian (HEMesh &m, float lambda)
 {
 	/*Task 2.2.3*/
+	// Cotangent approximation parallel to surface normal 
+	// no tangential smoothing : means the smoothing is done in the direction of the normal 
+	// otherwise would be along the surface of the mesh
+	// vertices wont drift along the surface and the overall shape is better preserved
+
+	// Important : Obtuse anlges will be ingnored (90 < a < 180)
+		// 	boundary conditions -> boundary vertices wont be updates
+
+	// PROBLEM : if lambda = 1, then the conic fan is inverted and not smoothed properly
+	std::map<OpenMesh::VertexHandle, OpenMesh::Vec3f> updated_pos;
+	for (auto vertex : m.vertices()) {
+
+
+		// PROBLEM : the vertices of the top and bottom faces of the cylinder are not evaluating to true  
+		// therefore they are getting smoothed as well (unlike in the solution)
+		if (m.is_boundary(vertex)) {
+			// std::cout << "boundaty" << std::endl;
+			// same position 
+			updated_pos[vertex] = m.point(vertex);
+			continue;
+		}
+
+		// unreal value to start
+		// to calculate the Voronoi area
+		double area = 0.f;
+		OpenMesh::Vec3f laplace_beltrami(0.f, 0.f, 0.f);
+
+		// this will get the outgoing halfedges from vertex
+		for (auto neighbor : m.voh_range(vertex)) {
+
+			// this will get the halfedge pointing to a vertex which is opposite to the edge 
+			// opp().prev().prev() should be the same as opp().next()
+			OpenMesh::SmartHalfedgeHandle neighbor1 = neighbor.opp().next();
+			OpenMesh::SmartHalfedgeHandle neighbor2 = neighbor.next();
+
+
+			// the angles are returned in radians
+			// get the angles of the vertex opp to the edge 
+			// this calculates the angle of the vertex to whicht the halfedge points
+			auto alpha = m.calc_sector_angle(neighbor1);
+			auto beta = m.calc_sector_angle(neighbor2);
+
+			// std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
+			// skip obtuse angles (90 < a < 180)
+			// Skipping these anlges could also be the cause of the problems
+			if (alpha > M_PI_2 || beta > M_PI_2) {
+				continue;
+			}
+
+			// cot(x) = 1/ tan(x)
+			float cot_alpha = 1.f / (tan(alpha));
+			float cot_beta = 1.f / (tan(beta));
+			// float cot_alpha = cos(alpha) / sin(alpha);
+			// float cot_beta = cos(beta) / sin(beta);
+			// std::cout << "Cot Alpha: " << cot_alpha << ", Cot Beta: " << cot_beta << std::endl;
+			float angle_sum = cot_alpha + cot_beta;
+
+			// (f_j - f_i)
+			OpenMesh::Vec3f vector_difference = m.point(neighbor.to()) - m.point(vertex);
+			laplace_beltrami += angle_sum * vector_difference;
+
+			// || p_i - p_j ||^2
+			float edge_length = pow(m.calc_edge_length(neighbor), 2);
+			// std::cout << "Edge Length: " << edge_length << std::endl;
+			// std::cout << "Angle Sum: " << angle_sum << std::endl;
+			float sumand = angle_sum * edge_length / 8.f;
+			area += sumand;
+			// std::cout << "Current Area Contribution: " << sumand << std::endl;
+		}
+
+		// TODO : Current Problem is for areas that are too small
+		// for example for cylinder top and bottom faces, edges are streching beyond the edges
+		// this means area gegen 0, so division by zero problem
+		// clamping, but at what cost
+		// values is taken at random
+		if (area < 0.2) {
+			area = 0.2f;
+		}
+		laplace_beltrami /= (2.f * area); // main problem ? 
+		updated_pos[vertex] = m.point(vertex) + lambda * laplace_beltrami;
+	}
+
+	// update all positions
+	for (auto& [vertex, pos] : updated_pos) {
+		m.point(vertex) = pos;
+	}
+
+	// std::cout << "End" << std::endl;
 }
+
 
 void AddNoise (HEMesh &m, OpenMesh::MPropHandleT<Viewer::BBoxType> bbox_prop)
 {
