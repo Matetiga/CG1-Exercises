@@ -16,6 +16,7 @@
 
 #include "glsl.h"
 
+
 Viewer::Viewer()
 	: AbstractViewer("CG1 Exercise 3"), vertex_shader_id(0), fragment_shader_id(0), program_id(0)
 { 
@@ -123,10 +124,34 @@ void CheckShaderCompileStatus(GLuint shaderId, std::string name)
 // Read, Compile and link the shader codes to a shader program
 void Viewer::CreateShaders()
 {
-	std::string vs((char*)shader_vert, shader_vert_size);
-	const char *vertex_content = vs.c_str();
+	// this will open the files
+	// the path to the files is relative : "... cg1/build/exercise3/"
+	std::ifstream vert_file("../../exercise3/glsl/shader.vert");// , std::ios::binary);
+	if (!vert_file )
+	{
+		std::cout << "Could not open vertex shader file" << std::endl;
+		return;
+	}
 
-	std::string fs((char*)shader_frag, shader_frag_size);
+	std::stringstream vertex_buffer;
+	// pointer to the file and "<<" reads the file until end and puts it into the stringstream
+	vertex_buffer << vert_file.rdbuf();
+	std::string vs = vertex_buffer.str();
+	//size_t shader_vert_size = vertex_buffer.str().size();
+	// this is just a normal constructor for a string
+	//std::string vs((char*)shader_vert, shader_vert_size);
+	const char* vertex_content = vs.c_str(); // pointer to chars of string until \0
+
+	std::ifstream frag_file("../../exercise3/glsl/shader.frag", std::ios::binary);
+	if (!frag_file)
+	{
+		std::cout << "Could not open fragment shader file" << std::endl;
+		return;
+	}
+	std::stringstream fragment_buffer;
+	fragment_buffer << frag_file.rdbuf();
+	std::string fs = fragment_buffer.str();
+	//std::string fs((char*)shader_frag, shader_frag_size);
 	const char *fragment_content = fs.c_str();
 
 	/*** Begin of task 3.2.1 ***
@@ -139,6 +164,25 @@ void Viewer::CreateShaders()
 	use the method "CheckShaderCompileStatus()" after the call to glCompileShader().
 	*/
 	/*** End of task 3.2.1 ***/
+
+	// The sequence of commands are shown in the vorlesung 
+	unsigned int program = glCreateProgram();
+
+	unsigned int vs_id = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vs_id, 1, &vertex_content, nullptr);
+	glCompileShader(vs_id);
+	CheckShaderCompileStatus(vs_id, "Vertex Shader");
+	glAttachShader(program, vs_id);
+
+	unsigned int fs_id = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fs_id, 1, &fragment_content, nullptr);
+	glCompileShader(fs_id);
+	CheckShaderCompileStatus(fs_id, "Fragment Shader");
+	glAttachShader(program, fs_id);
+
+	glLinkProgram(program);
+	glUseProgram(program);
+
 }
 
 void Viewer::drawContents()
