@@ -4,6 +4,7 @@
 // Copyright (C) CGV TU Dresden - All Rights Reserved
 
 in vec4 in_position;
+in vec4 in_color;
 
 out vec4 fragment_color;
 
@@ -13,7 +14,7 @@ out vec4 fragment_color;
 void main(void)
 {
 	gl_Position = in_position;
-	fragment_color = in_position;
+	fragment_color = in_color;
 
 	/* - 2.2.2 (b)
 	 * Declare a new "in" variable with the name "in_color". Instead of setting

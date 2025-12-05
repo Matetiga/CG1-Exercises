@@ -58,17 +58,15 @@ void Viewer::CreateVertexBuffers()
 
 	// Define 3 vertices for one face
 	GLfloat positions[] = {
+		// (x,y,z,w)
 		0, 1, 0, 1,
 		-1, -1, 0, 1,
 		1, -1, 0, 1
 	};
 
-	
-
-	
-
 	// Generate the vertex array 
 	glGenVertexArrays(1, &vertex_array_id);
+	// after the vertex array object is bound, all subsequent command will use this VAO
 	glBindVertexArray(vertex_array_id);
 
 	// Generate a position buffer to be appended to the vertex array
@@ -92,6 +90,19 @@ void Viewer::CreateVertexBuffers()
 	similar to the code above that creates the position buffer. Store the buffer
 	id into the variable "color_buffer_id" and bind the color buffer to the
 	shader variable "in_color". */
+	GLfloat colors[] = {
+		// (r,g,b,a)
+		1, 0, 0, 1,
+		0, 1, 0, 1,
+		0, 0, 1, 1
+	};
+	glGenVertexArrays(1, &color_buffer_id);
+	glGenBuffers(1, &color_buffer_id);
+	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+	GLuint color_id = glGetAttribLocation(program_id, "in_color");
+	glEnableVertexAttribArray(color_id);
+	glVertexAttribPointer(color_id, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	
 	
 	/*** End of task 3.2.2 (a) ***/
@@ -121,40 +132,32 @@ void CheckShaderCompileStatus(GLuint shaderId, std::string name)
 	}
 }
 
+
+// this will Open the respective Shader file for CreateShaders
+std::string openFile(std::string filename) {
+	std::ifstream file(filename, std::ios::binary);
+	if (!file.is_open()){
+		std::cout << "Could not open Shader file: " << filename << std::endl;
+		return nullptr;
+	}
+
+	std::stringstream file_buffer;
+	// rdbuf is a pointer to the file and "<<" reads the file until end and puts it into the stringstream
+	file_buffer << file.rdbuf();
+	std::string file_str = file_buffer.str();
+	std::cout << file_str << std::endl;
+	return file_str;
+}
+
 // Read, Compile and link the shader codes to a shader program
 void Viewer::CreateShaders()
 {
-	// this will open the files
-	// the path to the files is relative : "... cg1/build/exercise3/"
-	std::ifstream vert_file("../../exercise3/glsl/shader.vert", std::ios::binary);// , std::ios::binary);
-	if (!vert_file.is_open()) 
-	{
-		std::cout << "Could not open vertex shader file" << std::endl;
-		return;
-	}
-
-	std::stringstream vertex_buffer;
-	// pointer to the file and "<<" reads the file until end and puts it into the stringstream
-	vertex_buffer << vert_file.rdbuf();
-	std::string vs = vertex_buffer.str();
-	std::cout << vs << std::endl;
-	//size_t shader_vert_size = vertex_buffer.str().size();
-	// this is just a normal constructor for a string
-	//std::string vs((char*)shader_vert, shader_vert_size);
-	const char* vertex_content = vs.c_str(); // pointer to chars of string until \0
-
-	std::ifstream frag_file("../../exercise3/glsl/shader.frag", std::ios::binary);
-	if (!frag_file.is_open())
-	{
-		std::cout << "Could not open fragment shader file" << std::endl;
-		return;
-	}
-	std::stringstream fragment_buffer;
-	fragment_buffer << frag_file.rdbuf();
-	std::string fs = fragment_buffer.str();
-	std::cout << fs << std::endl;
-	//std::string fs((char*)shader_frag, shader_frag_size);
-	const char *fragment_content = fs.c_str();
+	// Store strings to keep them alive otherwise dangling pointer 
+	std::string vertex_str = openFile("../../exercise3/glsl/shader.vert");
+	std::string fragment_str = openFile("../../exercise3/glsl/shader.frag");
+	// c_str() gives a pointer to the char array of the string until \0
+	const char *vertex_content = vertex_str.c_str();
+	const char *fragment_content = fragment_str.c_str();
 
 	/*** Begin of task 3.2.1 ***
 	Use the appropriate OpenGL commands to create a shader object for
