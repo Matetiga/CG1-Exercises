@@ -126,8 +126,8 @@ void Viewer::CreateShaders()
 {
 	// this will open the files
 	// the path to the files is relative : "... cg1/build/exercise3/"
-	std::ifstream vert_file("../../exercise3/glsl/shader.vert");// , std::ios::binary);
-	if (!vert_file )
+	std::ifstream vert_file("../../exercise3/glsl/shader.vert", std::ios::binary);// , std::ios::binary);
+	if (!vert_file.is_open()) 
 	{
 		std::cout << "Could not open vertex shader file" << std::endl;
 		return;
@@ -137,13 +137,14 @@ void Viewer::CreateShaders()
 	// pointer to the file and "<<" reads the file until end and puts it into the stringstream
 	vertex_buffer << vert_file.rdbuf();
 	std::string vs = vertex_buffer.str();
+	std::cout << vs << std::endl;
 	//size_t shader_vert_size = vertex_buffer.str().size();
 	// this is just a normal constructor for a string
 	//std::string vs((char*)shader_vert, shader_vert_size);
 	const char* vertex_content = vs.c_str(); // pointer to chars of string until \0
 
 	std::ifstream frag_file("../../exercise3/glsl/shader.frag", std::ios::binary);
-	if (!frag_file)
+	if (!frag_file.is_open())
 	{
 		std::cout << "Could not open fragment shader file" << std::endl;
 		return;
@@ -151,6 +152,7 @@ void Viewer::CreateShaders()
 	std::stringstream fragment_buffer;
 	fragment_buffer << frag_file.rdbuf();
 	std::string fs = fragment_buffer.str();
+	std::cout << fs << std::endl;
 	//std::string fs((char*)shader_frag, shader_frag_size);
 	const char *fragment_content = fs.c_str();
 
@@ -166,22 +168,24 @@ void Viewer::CreateShaders()
 	/*** End of task 3.2.1 ***/
 
 	// The sequence of commands are shown in the vorlesung 
-	unsigned int program = glCreateProgram();
+	// These IDs are already defined in the header, therefore only assign 
+	program_id = glCreateProgram();
 
-	unsigned int vs_id = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vs_id, 1, &vertex_content, nullptr);
-	glCompileShader(vs_id);
-	CheckShaderCompileStatus(vs_id, "Vertex Shader");
-	glAttachShader(program, vs_id);
+	vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex_shader_id, 1, &vertex_content, nullptr);
+	glCompileShader(vertex_shader_id);
+	CheckShaderCompileStatus(vertex_shader_id, "Vertex Shader");
+	glAttachShader(program_id, vertex_shader_id);
 
-	unsigned int fs_id = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fs_id, 1, &fragment_content, nullptr);
-	glCompileShader(fs_id);
-	CheckShaderCompileStatus(fs_id, "Fragment Shader");
-	glAttachShader(program, fs_id);
+	fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment_shader_id, 1, &fragment_content, nullptr);
+	glCompileShader(fragment_shader_id);
+	CheckShaderCompileStatus(fragment_shader_id, "Fragment Shader");
+	glAttachShader(program_id, fragment_shader_id);
 
-	glLinkProgram(program);
-	glUseProgram(program);
+	glLinkProgram(program_id);
+	// glValidateProgram(program);
+	glUseProgram(program_id);
 
 }
 
