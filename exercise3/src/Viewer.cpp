@@ -57,12 +57,42 @@ void Viewer::CreateVertexBuffers()
 
 	// Define 3 vertices for one face
 	GLfloat positions[] = {
-		0, 1, 0, 1,
-		-1, -1, 0, 1,
-		1, -1, 0, 1
+		1, 1, 1, 1,
+		-1, 1, -1, 1,
+		-1, -1, 1, 1,
+
+		1,1,1,1,
+		-1,-1,1,1,
+		1,-1,-1,1,
+
+		1,1,1,1,
+		1,-1,-1,1,
+		-1,1,-1,1,
+
+		-1,-1,1,1,
+		-1,1,-1,1,
+		1,-1,-1,1
 	};
 
-	
+	GLfloat colors[] = {
+		// (r,g,b,a)
+		1, 0, 0, 1,
+		1, 0, 0, 1,
+		1, 0, 0, 1,
+
+		0,1,0,1,
+		0,1,0,1,
+		0,1,0,1,
+
+		0,0,1,1,
+		0,0,1,1,
+		0,0,1,1,
+
+		1,1,0,1,
+		1,1,0,1,
+		1,1,0,1
+
+	};
 
 	
 
@@ -91,7 +121,20 @@ void Viewer::CreateVertexBuffers()
 	similar to the code above that creates the position buffer. Store the buffer
 	id into the variable "color_buffer_id" and bind the color buffer to the
 	shader variable "in_color". */
+	//GLfloat colors[] = {
+	//	// (r,g,b,a)
+	//	1, 0, 0, 1,
+	//	0, 1, 0, 1,
+	//	0, 0, 1, 1
+	//};
 	
+	//glGenVertexArrays(1, &color_buffer_id);
+	glGenBuffers(1, &color_buffer_id);
+	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+	GLuint color_id = glGetAttribLocation(program_id, "in_color");
+	glEnableVertexAttribArray(color_id);
+	glVertexAttribPointer(color_id, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	
 	/*** End of task 3.2.2 (a) ***/
 	
@@ -138,6 +181,27 @@ void Viewer::CreateShaders()
 	attach both shader objects and link them. For error checking, you can
 	use the method "CheckShaderCompileStatus()" after the call to glCompileShader().
 	*/
+
+
+	vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex_shader_id, 1, &vertex_content, nullptr);
+	glCompileShader(vertex_shader_id);
+	CheckShaderCompileStatus(vertex_shader_id, "Vertex Shader");
+
+	fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment_shader_id, 1, &fragment_content, nullptr);
+	glCompileShader(fragment_shader_id);
+	CheckShaderCompileStatus(fragment_shader_id, "Fragment Shader");
+
+	
+	program_id = glCreateProgram();
+	glAttachShader(program_id, vertex_shader_id);
+	glAttachShader(program_id, fragment_shader_id);
+	glLinkProgram(program_id);
+	// glValidateProgram(program);
+	glUseProgram(program_id);
+
+
 	/*** End of task 3.2.1 ***/
 }
 
@@ -175,7 +239,7 @@ void Viewer::drawContents()
 	// Bind the vertex array 
 	glBindVertexArray(vertex_array_id);
 	// Draw the bound vertex array. Start at element 0 and draw 3 vertices
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDrawArrays(GL_TRIANGLES, 0, 12);
 
 	/*** End of task 3.2.4 (b) ***/
 	
