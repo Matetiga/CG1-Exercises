@@ -235,6 +235,11 @@ void Viewer::drawContents()
 	First, find the location of these variables using glGetUniformLocation and
 	then set them with the command glUniformMatrix4fv. 
 	*/
+	GLint mv_location = glGetUniformLocation(program_id, "modelview_matrix");
+	GLint p_location = glGetUniformLocation(program_id, "projection_matrix");
+
+	glUniformMatrix4fv(mv_location, 1, GL_FALSE, modelViewMatrix.data());
+	glUniformMatrix4fv(p_location, 1, GL_FALSE, projectionMatrix.data());
 
 	// Bind the vertex array 
 	glBindVertexArray(vertex_array_id);

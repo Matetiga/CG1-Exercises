@@ -8,12 +8,13 @@ in vec4 in_color;
 
 out vec4 fragment_color;
 
-
+uniform mat4 modelview_matrix;
+uniform mat4 projection_matrix;
 
 
 void main(void)
 {
-	gl_Position = in_position;
+	gl_Position = projection_matrix * modelview_matrix * in_position;
 	fragment_color = in_color;
 
 	/* - 2.2.2 (b)
