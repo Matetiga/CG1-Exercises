@@ -241,6 +241,12 @@ void Viewer::drawContents()
 	glUniformMatrix4fv(mv_location, 1, GL_FALSE, modelViewMatrix.data());
 	glUniformMatrix4fv(p_location, 1, GL_FALSE, projectionMatrix.data());
 
+	GLint juliaC_location = glGetUniformLocation(program_id, "juliaC");
+	GLint juliaZoom_location = glGetUniformLocation(program_id, "juliaZoom");
+
+	glUniform2fv(juliaC_location, 1, juliaC.data());
+	glUniform1f(juliaZoom_location, juliaZoom);
+
 	// Bind the vertex array 
 	glBindVertexArray(vertex_array_id);
 	// Draw the bound vertex array. Start at element 0 and draw 3 vertices
