@@ -74,26 +74,6 @@ void Viewer::CreateVertexBuffers()
 		1,-1,-1,1
 	};
 
-	GLfloat colors[] = {
-		// (r,g,b,a)
-		1, 0, 0, 1,
-		1, 0, 0, 1,
-		1, 0, 0, 1,
-
-		0,1,0,1,
-		0,1,0,1,
-		0,1,0,1,
-
-		0,0,1,1,
-		0,0,1,1,
-		0,0,1,1,
-
-		1,1,0,1,
-		1,1,0,1,
-		1,1,0,1
-
-	};
-
 	
 
 	// Generate the vertex array 
@@ -121,14 +101,28 @@ void Viewer::CreateVertexBuffers()
 	similar to the code above that creates the position buffer. Store the buffer
 	id into the variable "color_buffer_id" and bind the color buffer to the
 	shader variable "in_color". */
-	//GLfloat colors[] = {
-	//	// (r,g,b,a)
-	//	1, 0, 0, 1,
-	//	0, 1, 0, 1,
-	//	0, 0, 1, 1
-	//};
+
+	GLfloat colors[] = {
+		// (r,g,b,a)
+		1, 0, 0, 1,
+		1, 0, 0, 1,
+		1, 0, 0, 1,
+
+		0,1,0,1,
+		0,1,0,1,
+		0,1,0,1,
+
+		0,0,1,1,
+		0,0,1,1,
+		0,0,1,1,
+
+		1,1,0,1,
+		1,1,0,1,
+		1,1,0,1
+
+	};
 	
-	//glGenVertexArrays(1, &color_buffer_id);
+	glGenVertexArrays(1, &color_buffer_id);
 	glGenBuffers(1, &color_buffer_id);
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer_id);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
@@ -184,12 +178,12 @@ void Viewer::CreateShaders()
 
 
 	vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertex_shader_id, 1, &vertex_content, nullptr);
+	glShaderSource(vertex_shader_id, 1, &vertex_content, 0);
 	glCompileShader(vertex_shader_id);
 	CheckShaderCompileStatus(vertex_shader_id, "Vertex Shader");
 
 	fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader_id, 1, &fragment_content, nullptr);
+	glShaderSource(fragment_shader_id, 1, &fragment_content, 0);
 	glCompileShader(fragment_shader_id);
 	CheckShaderCompileStatus(fragment_shader_id, "Fragment Shader");
 
@@ -235,17 +229,17 @@ void Viewer::drawContents()
 	First, find the location of these variables using glGetUniformLocation and
 	then set them with the command glUniformMatrix4fv. 
 	*/
-	GLint mv_location = glGetUniformLocation(program_id, "modelview_matrix");
-	GLint p_location = glGetUniformLocation(program_id, "projection_matrix");
+	GLint modelViewId = glGetUniformLocation(program_id, "modelViewMatrix");
+	GLint projectionId = glGetUniformLocation(program_id, "projectionMatrix");
 
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, modelViewMatrix.data());
-	glUniformMatrix4fv(p_location, 1, GL_FALSE, projectionMatrix.data());
+	glUniformMatrix4fv(modelViewId, 1, GL_FALSE, modelViewMatrix.data());
+	glUniformMatrix4fv(projectionId, 1, GL_FALSE, projectionMatrix.data());
 
-	GLint juliaC_location = glGetUniformLocation(program_id, "juliaC");
-	GLint juliaZoom_location = glGetUniformLocation(program_id, "juliaZoom");
+	GLint cId = glGetUniformLocation(program_id, "c");
+	GLint mId = glGetUniformLocation(program_id, "m");
 
-	glUniform2fv(juliaC_location, 1, juliaC.data());
-	glUniform1f(juliaZoom_location, juliaZoom);
+	glUniform2fv(cId, 1, juliaC.data());
+	glUniform1f(mId, juliaZoom);
 
 	// Bind the vertex array 
 	glBindVertexArray(vertex_array_id);

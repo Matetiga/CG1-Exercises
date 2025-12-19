@@ -4,12 +4,12 @@
 // Copyright (C) CGV TU Dresden - All Rights Reserved
 
 in vec4 fragment_color;
-in vec4 model_position;
+in vec4 point_position;
 
 out vec4 color;
 
-uniform vec2 juliaC;
-uniform float juliaZoom;
+uniform vec2 c;
+uniform float m;
 
 
 void main(void)
@@ -21,13 +21,14 @@ void main(void)
 	 position in model space, which you can receive from the vertex shader
 	 via another "in" variable. */
 
-	vec2 z = model_position.xy * juliaZoom;
+	vec2 z = point_position.xy * m;
 
-	int imax = 200;
+	int n = 200; // n -> i_max
 	int i;
-	for (i=1;i<=imax;i++) {
-		float x = (z.x * z.x - z.y * z.y) + juliaC.x;
-		float y = (z.y * z.x + z.x * z.y) + juliaC.y;
+
+	for (i=1;i<=n;i++) {
+		float x = (z.x * z.x - z.y * z.y) + c.x;
+		float y = (z.y * z.x + z.x * z.y) + c.y;
 
 		if (x*x+y*y > 4.0) break;
 
@@ -36,12 +37,11 @@ void main(void)
 	}
 	
 	float alpha = 0.0;
-	if (i<imax) {
-		alpha = float(i) / float(imax);
+	if (i<n) {
+		alpha = float(i) / float(n);
 	}
 
 	color = vec4(alpha, alpha, alpha, alpha) * 10.0 * fragment_color;
-	//color = fragment_color;
 
 	/**** End of tasks ***/
 }
