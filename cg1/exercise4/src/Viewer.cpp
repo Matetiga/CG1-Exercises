@@ -17,6 +17,7 @@
 #include "glsl.h"
 #include "textures.h"
 
+const GLuint RESTART_IDX = 314159;
 const uint32_t PATCH_SIZE = 256; //number of vertices along one side of the terrain patch
 
 Viewer::Viewer()
@@ -77,6 +78,25 @@ void Viewer::CreateGeometry()
 	
 	/*Generate positions and indices for a terrain patch with a
 	  single triangle strip */
+
+	for(int z = 0; z <= PATCH_SIZE ; z++){
+		for(int x = 0; x <= PATCH_SIZE ; x++){
+			positions.push_back(Eigen::Vector4f((float)x, 0.0f, (float)z, 1.0f));
+		}
+	}
+	
+	// Anti Clockwise Order
+	glPrimitiveRestartIndex(RESTART_IDX);
+	for(int z = 0; z < PATCH_SIZE; z++){
+		for(int x = 0; x <= PATCH_SIZE; x++){
+			indices.push_back((z + 1) * (PATCH_SIZE + 1) + x);
+			indices.push_back(z * (PATCH_SIZE + 1) + x);
+		}
+	
+		//Restart the strip
+		indices.push_back(RESTART_IDX);
+	}
+
 
 	terrainShader.bind();
 	terrainPositions.uploadData(positions).bindToAttribute("position");
@@ -181,6 +201,13 @@ void Viewer::drawContents()
 	terrainShader.setUniform("mvp", mvp);
 	terrainShader.setUniform("cameraPos", cameraPosition, false);
 	/* Task: Render the terrain */
+
+	// Difference between glDrawArrays and glDrawElements
+	// glDrawArrays reads vertices sequentially 
+	// glDrawElements reads vertices according to the indices provided in the index buffer
+	// using the RESTART Index to create strips
+	glEnable(GL_PRIMITIVE_RESTART);
+	glDrawElements(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0);
 
 	
 
