@@ -5,18 +5,27 @@
 
 in vec4 position;
 
-
-
 uniform mat4 mvp;
+
+out vec3 normal;
 
 //Returns the height of the procedural terrain at a given xz position
 float getTerrainHeight(vec2 p);
 
 
-
 void main()
 {
-	gl_Position = mvp * position;
+	vec4 position_with_height = vec4(position.x, getTerrainHeight(position.xz), position.z, 1.0);
+	gl_Position = mvp * position_with_height;
+
+	// calculate the normal
+	// first two neighbors
+	vec2 offset = vec2(1.0, 0.0);
+	vec3 tangent = vec3(1.0 , getTerrainHeight(position.xz + offset.xy), 0.0);
+	vec3 binormal = vec3(0.0 , getTerrainHeight(position.xz + offset.yx), 1.0);
+	// Crossproduct of both neighbors 
+	vec3 crossProduct = cross(tangent, binormal);
+	normal = normalize(crossProduct);
 }
 
 //source: https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
