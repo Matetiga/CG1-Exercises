@@ -60,6 +60,22 @@ GLuint CreateTexture(const unsigned char* fileData, size_t fileLength, bool repe
 	int textureWidth, textureHeight, textureChannels;
 	auto pixelData = stbi_load_from_memory(fileData, (int)fileLength, &textureWidth, &textureHeight, &textureChannels, 3);
 	textureName = 0;
+	
+	glGenTextures(1, &textureName);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureName);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 
+		textureWidth, textureHeight, 
+		0, GL_RGB, 
+		GL_UNSIGNED_BYTE, 
+		pixelData);
+
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,  GL_CLAMP_TO_EDGE);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
 	stbi_image_free(pixelData);
 	return textureName;
 }
@@ -182,6 +198,7 @@ bool IsBoxCompletelyBehindPlane(const Eigen::Vector3f& boxMin, const Eigen::Vect
 		plane.dot(Eigen::Vector4f(boxMax.x(), boxMax.y(), boxMin.z(), 1)) < 0;
 }
 
+// wo wird drawContents aufgerufen? (nicht in main.cpp)
 void Viewer::drawContents()
 {
 	camera().ComputeCameraMatrices(view, proj);
@@ -201,6 +218,13 @@ void Viewer::drawContents()
 	terrainShader.setUniform("mvp", mvp);
 	terrainShader.setUniform("cameraPos", cameraPosition, false);
 	/* Task: Render the terrain */
+
+	// Bind textures to shader
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, grassTexture);
+	// this 0 refers to texture unit 0 which is specified above
+	terrainShader.setUniform("background", 0);
+
 
 	// Difference between glDrawArrays and glDrawElements
 	// glDrawArrays reads vertices sequentially 

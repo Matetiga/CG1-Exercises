@@ -43,7 +43,7 @@ void main()
 	
 
 	//Calculate light
-	color = calculateLighting(color, specular, normal, dirToViewer);
+	color = calculateLighting(color, specular, normal, dirToViewer) * getBackgroundColor();
 
 	
 }
