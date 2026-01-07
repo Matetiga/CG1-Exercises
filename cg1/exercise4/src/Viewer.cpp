@@ -72,9 +72,9 @@ GLuint CreateTexture(const unsigned char* fileData, size_t fileLength, bool repe
 
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,  GL_CLAMP_TO_EDGE);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	
 	stbi_image_free(pixelData);
 	return textureName;
@@ -122,11 +122,11 @@ void Viewer::CreateGeometry()
 
 	//textures
 	grassTexture = CreateTexture((unsigned char*)grass_jpg, grass_jpg_size);
-	rockTexture = CreateTexture((unsigned char*)rock_jpg, rock_jpg_size);
-	roadColorTexture = CreateTexture((unsigned char*)roadcolor_jpg, roadcolor_jpg_size);
-	roadNormalMap = CreateTexture((unsigned char*)roadnormals_jpg, roadnormals_jpg_size);
-	roadSpecularMap = CreateTexture((unsigned char*)roadspecular_jpg, roadspecular_jpg_size);
-	alphaMap = CreateTexture((unsigned char*)alpha_jpg, alpha_jpg_size, false);
+	//rockTexture = CreateTexture((unsigned char*)rock_jpg, rock_jpg_size);
+	//roadColorTexture = CreateTexture((unsigned char*)roadcolor_jpg, roadcolor_jpg_size);
+	//roadNormalMap = CreateTexture((unsigned char*)roadnormals_jpg, roadnormals_jpg_size);
+	//roadSpecularMap = CreateTexture((unsigned char*)roadspecular_jpg, roadspecular_jpg_size);
+	//alphaMap = CreateTexture((unsigned char*)alpha_jpg, alpha_jpg_size, false);
 }
 
 void Viewer::ensureFBO()
