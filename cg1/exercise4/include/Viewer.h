@@ -12,6 +12,14 @@
 class Viewer : public nse::gui::AbstractViewer
 {
 public:
+	enum textureIndex {
+		GRASS_TEXTURE = 0,
+		ROCK_TEXTURE = 1,
+		ROAD_COLOR_TEXTURE = 2,
+		ROAD_SPECULAR_MAP = 3,
+		ROAD_NORMAL_MAP = 4,
+		ALPHA_MAP = 5
+	};
 	Viewer();
 
 	void LoadShaders();

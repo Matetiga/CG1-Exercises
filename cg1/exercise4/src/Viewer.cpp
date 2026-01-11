@@ -54,15 +54,15 @@ void Viewer::LoadShaders()
 	terrainShader.init("Terrain Shader", std::string((const char*)terrain_vert, terrain_vert_size), std::string((const char*)terrain_frag, terrain_frag_size));
 }
 
-GLuint CreateTexture(const unsigned char* fileData, size_t fileLength, bool repeat = true)
+GLuint CreateTexture(const unsigned char* fileData, size_t fileLength,Viewer::textureIndex texIdx ,  bool repeat = true)
 {
 	GLuint textureName;
 	int textureWidth, textureHeight, textureChannels;
 	auto pixelData = stbi_load_from_memory(fileData, (int)fileLength, &textureWidth, &textureHeight, &textureChannels, 3);
 	textureName = 0;
-	
+
+	// glActivateTexture is not necessary
 	glGenTextures(1, &textureName);
-	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureName);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 
 		textureWidth, textureHeight, 
@@ -71,10 +71,13 @@ GLuint CreateTexture(const unsigned char* fileData, size_t fileLength, bool repe
 		pixelData);
 
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,  GL_CLAMP_TO_EDGE);
+	// repeat = false for the alpha map
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
 	
 	stbi_image_free(pixelData);
 	return textureName;
@@ -121,12 +124,12 @@ void Viewer::CreateGeometry()
 	
 
 	//textures
-	grassTexture = CreateTexture((unsigned char*)grass_jpg, grass_jpg_size);
-	//rockTexture = CreateTexture((unsigned char*)rock_jpg, rock_jpg_size);
-	//roadColorTexture = CreateTexture((unsigned char*)roadcolor_jpg, roadcolor_jpg_size);
-	//roadNormalMap = CreateTexture((unsigned char*)roadnormals_jpg, roadnormals_jpg_size);
-	//roadSpecularMap = CreateTexture((unsigned char*)roadspecular_jpg, roadspecular_jpg_size);
-	//alphaMap = CreateTexture((unsigned char*)alpha_jpg, alpha_jpg_size, false);
+	grassTexture = CreateTexture((unsigned char*)grass_jpg, grass_jpg_size, Viewer::GRASS_TEXTURE);
+	rockTexture = CreateTexture((unsigned char*)rock_jpg, rock_jpg_size, Viewer::ROCK_TEXTURE);
+	roadColorTexture = CreateTexture((unsigned char*)roadcolor_jpg, roadcolor_jpg_size, Viewer::ROAD_COLOR_TEXTURE);
+	roadNormalMap = CreateTexture((unsigned char*)roadnormals_jpg, roadnormals_jpg_size, Viewer::ROAD_NORMAL_MAP);
+	roadSpecularMap = CreateTexture((unsigned char*)roadspecular_jpg, roadspecular_jpg_size, Viewer::ROAD_SPECULAR_MAP);
+	alphaMap = CreateTexture((unsigned char*)alpha_jpg, alpha_jpg_size,Viewer::ALPHA_MAP);
 }
 
 void Viewer::ensureFBO()
@@ -220,10 +223,39 @@ void Viewer::drawContents()
 	/* Task: Render the terrain */
 
 	// Bind textures to shader
-	glActiveTexture(GL_TEXTURE0);
+	// here is necessary to call glActiveTexture to select an alredy generated texture
+	// Background texture for the grass
+	glActiveTexture(GL_TEXTURE0 + Viewer::GRASS_TEXTURE);
 	glBindTexture(GL_TEXTURE_2D, grassTexture);
-	// this 0 refers to texture unit 0 which is specified above
-	terrainShader.setUniform("background", 0);
+	// this 0 refers to texture Channel in the shader 
+	terrainShader.setUniform("background", 0); // provided method only works for integers and not for GLuint
+
+	// texture for the road ontop
+	glActiveTexture(GL_TEXTURE0 + Viewer::ROCK_TEXTURE);
+	glBindTexture(GL_TEXTURE_2D, rockTexture);
+	terrainShader.setUniform("rockTexture",1);
+
+	// road texture
+	glActiveTexture(GL_TEXTURE0 + Viewer::ROAD_COLOR_TEXTURE);
+	glBindTexture(GL_TEXTURE_2D, roadColorTexture);
+	terrainShader.setUniform("roadColorTexture",2);
+
+	// road specular
+	glActiveTexture(GL_TEXTURE0 + Viewer::ROAD_SPECULAR_MAP);
+	glBindTexture(GL_TEXTURE_2D, roadSpecularMap);
+	terrainShader.setUniform("roadSpecularMap", 3);
+
+	// road normal map
+	glActiveTexture(GL_TEXTURE0 + Viewer::ROAD_NORMAL_MAP);
+	glBindTexture(GL_TEXTURE_2D, roadNormalMap);
+	terrainShader.setUniform("roadNormalMap", 4);
+
+	// road alpha
+	glActiveTexture(GL_TEXTURE0 + Viewer::ALPHA_MAP);
+	glBindTexture(GL_TEXTURE_2D, alphaMap);
+	terrainShader.setUniform("alphaMap", 5);
+
+
 
 
 	// Difference between glDrawArrays and glDrawElements

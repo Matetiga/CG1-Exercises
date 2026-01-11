@@ -2,15 +2,24 @@
 // This source code is property of the Computer Graphics and Visualization 
 // chair of the TU Dresden. Do not distribute! 
 // Copyright (C) CGV TU Dresden - All Rights Reserved
+#define M_PI 3.1415926535897932384626433832795
 
 
+in vec3 tangent;
+in vec3 binormal;
 in vec3 normal;
+in vec4 worldPos;
 out vec4 color;
-
-uniform vec3 cameraPos;
 
 
 uniform sampler2D background;
+uniform sampler2D rockTexture;
+uniform sampler2D roadColorTexture;
+uniform sampler2D roadSpecularMap;
+uniform sampler2D roadNormalMap;
+uniform sampler2D alphaMap;
+
+uniform vec3 cameraPos;
 uniform vec2 screenSize;
 
 const vec3 dirToLight = normalize(vec3(1, 3, 1));	
@@ -27,23 +36,45 @@ vec4 calculateLighting(vec4 materialColor, float specularIntensity, vec3 normali
 
 vec4 getBackgroundColor()
 {
-	return texture(background, gl_FragCoord.xy / screenSize);
+	// this uses the camera position which causes the error that the texture follows the camera
+	//	return texture(background, gl_FragCoord.xy / screenSize);
+	// the screenSize makes the terrain to pixelated
+
+	
+	float degr = 40.0;
+	float omega = acos(dot(vec3(1.0,0.0,1.0) , normal)); // in radians
+	// both conditions make sure the rock Texture is active on every direction,
+	// otherwise (-1, 0, -1) view direction would be only made of grass 
+	if(omega < degr*M_PI / 180 ||M_PI - omega < degr*M_PI/180 ) // the angle between the normal and the slope should be greater than 70 degrees
+	{
+		return texture(rockTexture, worldPos.xz / 25.5);
+	}
+	return texture(background, worldPos.xz / 25.5);
 }
 
 void main()
 {
 	//surface geometry
 	// vec3 n = vec3(0, 1, 0);
-	vec3 dirToViewer = vec3(0, 1, 0);
+	vec3 dirToViewer = cameraPos - worldPos.xyz;
 
 	//material properties	
 	color = vec4(0.6, 0.6, 0.6, 1);
-	float specular = 0;
+	float specular = texture(roadSpecularMap, worldPos.xz / 255).r ;
 
+	vec4 backgroundColor = getBackgroundColor();
+	vec4 road = texture(alphaMap, worldPos.xz / 255);
+	vec4 roadColor = texture(roadColorTexture, worldPos.xz / 25.5);
+	vec4 roadNorMap  = texture(roadNormalMap, worldPos.xz / 255);
+
+	backgroundColor = mix(backgroundColor, roadColor, road.r);
+
+	// transform normal from tangent space to world space
+	//roadNorMap.y = - roadNorMap.y; // invert y component ------------> Check if here or in n_tan!!! (scene looks darker)
+	vec3 n_tan = 2.0 * roadNorMap.xyz - 1.0; // map from [0,1] to [-1,1]
+	n_tan.y = - n_tan.y; // with this inverted, the scene looks brighter 
+	mat3 TBN = mat3(normalize(tangent), normalize(binormal), normal);
+	vec3 normal_eye = normalize(TBN * n_tan);
 	
-
-	//Calculate light
-	color = calculateLighting(color, specular, normal, dirToViewer) * getBackgroundColor();
-
-	
+	color = backgroundColor * calculateLighting(color, specular, normal_eye, dirToViewer);
 }
