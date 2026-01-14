@@ -4,6 +4,7 @@
 // Copyright (C) CGV TU Dresden - All Rights Reserved
 
 in vec4 position;
+in vec2 offset;
 
 uniform mat4 mvp;
 
@@ -18,16 +19,16 @@ float getTerrainHeight(vec2 p);
 
 void main()
 {
-	float currentHeight = getTerrainHeight(position.xz);
-	worldPos = vec4(position.x, currentHeight, position.z, 1.0);
+	float currentHeight = getTerrainHeight(position.xz + offset.xy);
+	worldPos = vec4(position.x + offset.x, currentHeight, position.z + offset.y, 1.0);
 	gl_Position = mvp * worldPos;
 
 
 	// calculate the normal
 	// first two neighbors
-	vec2 offset = vec2(1.0, 0.0);
-	float hightX = getTerrainHeight(worldPos.xz + offset.xy);
-	float hightZ = getTerrainHeight(worldPos.xz + offset.yx);
+	vec2 neighborOffset = vec2(1.0, 0.0);
+	float hightX = getTerrainHeight(worldPos.xz + neighborOffset.xy);
+	float hightZ = getTerrainHeight(worldPos.xz + neighborOffset.yx);
 	
 	// using height difference
 	tangent = vec3(1.0 , hightX - currentHeight, 0.0);

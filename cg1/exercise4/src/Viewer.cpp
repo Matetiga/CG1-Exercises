@@ -118,8 +118,17 @@ void Viewer::CreateGeometry()
 
 
 	terrainShader.bind();
-	terrainPositions.uploadData(positions).bindToAttribute("position");
+	// no uniform, but just "in" inside the shader? YES, because its a buffer that has Info pro vertex
+	terrainPositions.uploadData(positions).bindToAttribute("position"); 
 	terrainIndices.uploadData((uint32_t)indices.size() * sizeof(uint32_t), indices.data());
+
+	// bind the offset Information to the buffer to the shader
+	// IMPORTANT : These two following lines cause a 501 Error 
+	//offsetBuffer.bind();
+	//offsetBuffer.bindToAttribute("offset");
+	// this will activate the pointer in offset buffer to move only after a complete instance has been drawn
+	glVertexAttribDivisor(terrainShader.attrib("offset"), 1);  
+
 
 	
 
@@ -211,15 +220,62 @@ void Viewer::drawContents()
 	int visiblePatches = 0;
 
 	RenderSky();
-	
+
 	//render terrain
 	glEnable(GL_DEPTH_TEST);
 	terrainVAO.bind();
-	terrainShader.bind();	
-	
+	terrainShader.bind();
+
 	terrainShader.setUniform("screenSize", Eigen::Vector2f(width(), height()), false);
 	terrainShader.setUniform("mvp", mvp);
 	terrainShader.setUniform("cameraPos", cameraPosition, false);
+
+	// Calculate the view frustum planes and the scene bounding box
+	Eigen::Vector4f frustumPlanes[6];
+	nse::math::BoundingBox<float, 3> bbox;
+	CalculateViewFrustum(mvp, frustumPlanes, bbox);
+
+	// bind and pass the offset buffer to the shader
+	std::vector<Eigen::Vector2f> offsets;
+	int visibleChuncks = 10;
+	float patch_pixel = (float)PATCH_SIZE;
+
+	int camX = floor(cameraPosition.x() / patch_pixel);
+	int camZ = floor(cameraPosition.z() / patch_pixel);
+
+	std::cout << "current camera postion " << cameraPosition.x() << " " << cameraPosition.z() << std::endl;
+	std::cout << "current camX: " << camX << " camZ: " << camZ << std::endl;
+	for (int x = -visibleChuncks; x <= visibleChuncks; x++) {
+		for (int z = -visibleChuncks; z <= visibleChuncks; z++) {
+
+			// create the AABB box
+			Eigen::Vector3f boxMin = Eigen::Vector3f(x * patch_pixel + camX * patch_pixel, 0.0f, z * patch_pixel + camZ * patch_pixel);
+			Eigen::Vector3f boxMax = Eigen::Vector3f((x + 1) * patch_pixel+ camX * patch_pixel, 15.0f, (z + 1) * patch_pixel+ camZ * patch_pixel); // +1 to get to the other corner
+
+			// Frustum Culling Test
+			bool visible = true;
+			for (int i = 0; i < 6; i++) {
+				if (IsBoxCompletelyBehindPlane(boxMin, boxMax, frustumPlanes[i])) {
+					visible = false;
+					break;
+				}
+			}
+
+			if (visible) {
+				offsets.push_back(Eigen::Vector2f(x * patch_pixel+ camX * patch_pixel, z * patch_pixel+ camZ * patch_pixel));
+			}
+
+		}
+	}
+
+	visiblePatches = offsets.size();
+
+	offsetBuffer.bind(); // really necessary?
+	offsetBuffer.uploadData(offsets);
+	offsetBuffer.bindToAttribute("offset"); // otherwise the other instances are not rendered, then why do the same in CreateGeometry?
+	
+
+
 	/* Task: Render the terrain */
 
 	// Bind textures to shader
@@ -263,7 +319,7 @@ void Viewer::drawContents()
 	// glDrawElements reads vertices according to the indices provided in the index buffer
 	// using the RESTART Index to create strips
 	glEnable(GL_PRIMITIVE_RESTART);
-	glDrawElements(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0);
+	glDrawElementsInstanced(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size()); // 1 marks the number of instances
 
 	
 
