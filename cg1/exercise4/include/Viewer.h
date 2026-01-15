@@ -39,9 +39,13 @@ private:
 	nse::gui::GLVertexArray emptyVAO;
 
 	nse::gui::GLShader terrainShader;
+	nse::gui::GLShader waterShader;
 	nse::gui::GLVertexArray terrainVAO;
+	nse::gui::GLVertexArray waterVAO;
 	nse::gui::GLBuffer terrainPositions;
 	nse::gui::GLBuffer terrainIndices;
+	nse::gui::GLBuffer waterPositionsBuf;
+	nse::gui::GLBuffer waterIndicesBuf;
 
 	GLuint grassTexture, rockTexture, roadColorTexture, roadNormalMap, roadSpecularMap, alphaMap;
 	GLuint backgroundFBO, backgroundTexture;

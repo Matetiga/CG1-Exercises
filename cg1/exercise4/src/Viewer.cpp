@@ -23,7 +23,7 @@ const uint32_t PATCH_SIZE = 256; //number of vertices along one side of the terr
 Viewer::Viewer()
 	: AbstractViewer("CG1 Exercise 4"),
 	terrainPositions(nse::gui::VertexBuffer), terrainIndices(nse::gui::IndexBuffer),
-	offsetBuffer(nse::gui::VertexBuffer)
+	offsetBuffer(nse::gui::VertexBuffer), waterPositionsBuf(nse::gui::VertexBuffer), waterIndicesBuf(nse::gui::IndexBuffer)
 {
 	LoadShaders();
 	CreateGeometry();
@@ -52,6 +52,7 @@ void Viewer::LoadShaders()
 {
 	skyShader.init("Sky Shader", std::string((const char*)sky_vert, sky_vert_size), std::string((const char*)sky_frag, sky_frag_size));
 	terrainShader.init("Terrain Shader", std::string((const char*)terrain_vert, terrain_vert_size), std::string((const char*)terrain_frag, terrain_frag_size));
+	waterShader.init("Water Shader", std::string((const char*)water_vert, water_vert_size), std::string((const char*)water_frag, water_frag_size));
 }
 
 GLuint CreateTexture(const unsigned char* fileData, size_t fileLength,Viewer::textureIndex texIdx ,  bool repeat = true)
@@ -83,54 +84,67 @@ GLuint CreateTexture(const unsigned char* fileData, size_t fileLength,Viewer::te
 	return textureName;
 }
 
-void Viewer::CreateGeometry()
+void CreateTerrain(std::vector<Eigen::Vector4f>& positions, std::vector<uint32_t>& indices, float height)
 {
-	//empty VAO for sky
-	emptyVAO.generate();
-
-	//terrain VAO	
-	terrainVAO.generate();
-	terrainVAO.bind();
-	
-	std::vector<Eigen::Vector4f> positions;
-	std::vector<uint32_t> indices;
-	
-	/*Generate positions and indices for a terrain patch with a
-	  single triangle strip */
-
 	for(int z = 0; z <= PATCH_SIZE ; z++){
 		for(int x = 0; x <= PATCH_SIZE ; x++){
-			positions.push_back(Eigen::Vector4f((float)x, 0.0f, (float)z, 1.0f));
+			positions.push_back(Eigen::Vector4f((float)x, height, (float)z, 1.0f));
 		}
 	}
 	
 	// Anti Clockwise Order
-	glPrimitiveRestartIndex(RESTART_IDX);
 	for(int z = 0; z < PATCH_SIZE; z++){
 		for(int x = 0; x <= PATCH_SIZE; x++){
 			indices.push_back((z + 1) * (PATCH_SIZE + 1) + x);
 			indices.push_back(z * (PATCH_SIZE + 1) + x);
 		}
 	
-		//Restart the strip
+		//Restart the strip/
 		indices.push_back(RESTART_IDX);
 	}
+}
 
+void Viewer::CreateGeometry()
+{
+	glPrimitiveRestartIndex(RESTART_IDX);
+	//empty VAO for sky
+	emptyVAO.generate();
 
+	
+	// Information for terrain
+	std::vector<Eigen::Vector4f> positions;
+	std::vector<uint32_t> indices;
+	CreateTerrain(positions, indices, 0.0f);
+
+	// Information for water
+	std::vector<Eigen::Vector4f> waterPositions;
+	std::vector<uint32_t> waterIndices;
+	CreateTerrain(waterPositions, waterIndices, 5.0f);
+
+	//terrain VAO	
+	terrainVAO.generate();
+	terrainVAO.bind();
 	terrainShader.bind();
 	// no uniform, but just "in" inside the shader? YES, because its a buffer that has Info pro vertex
 	terrainPositions.uploadData(positions).bindToAttribute("position"); 
 	terrainIndices.uploadData((uint32_t)indices.size() * sizeof(uint32_t), indices.data());
-
 	// bind the offset Information to the buffer to the shader
-	// IMPORTANT : These two following lines cause a 501 Error 
+	// IMPORTANT : These two following lines cause a 501 Error , why?
 	//offsetBuffer.bind();
 	//offsetBuffer.bindToAttribute("offset");
 	// this will activate the pointer in offset buffer to move only after a complete instance has been drawn
 	glVertexAttribDivisor(terrainShader.attrib("offset"), 1);  
 
+	// water VAO ---> the same process has to be done for water
+	waterVAO.generate();
+	waterVAO.bind();
+	terrainShader.bind();
 
-	
+	waterPositionsBuf.uploadData(waterPositions).bindToAttribute("waterPosition");
+	waterIndicesBuf.uploadData((uint32_t)waterIndices.size() * sizeof(uint32_t), waterIndices.data());
+	//offsetBuffer.bindToAttribute("offset");
+	glVertexAttribDivisor(terrainShader.attrib("offset"), 1);  
+
 
 	//textures
 	grassTexture = CreateTexture((unsigned char*)grass_jpg, grass_jpg_size, Viewer::GRASS_TEXTURE);
@@ -221,14 +235,6 @@ void Viewer::drawContents()
 
 	RenderSky();
 
-	//render terrain
-	glEnable(GL_DEPTH_TEST);
-	terrainVAO.bind();
-	terrainShader.bind();
-
-	terrainShader.setUniform("screenSize", Eigen::Vector2f(width(), height()), false);
-	terrainShader.setUniform("mvp", mvp);
-	terrainShader.setUniform("cameraPos", cameraPosition, false);
 
 	// Calculate the view frustum planes and the scene bounding box
 	Eigen::Vector4f frustumPlanes[6];
@@ -242,15 +248,12 @@ void Viewer::drawContents()
 
 	int camX = floor(cameraPosition.x() / patch_pixel);
 	int camZ = floor(cameraPosition.z() / patch_pixel);
-
-	std::cout << "current camera postion " << cameraPosition.x() << " " << cameraPosition.z() << std::endl;
-	std::cout << "current camX: " << camX << " camZ: " << camZ << std::endl;
 	for (int x = -visibleChuncks; x <= visibleChuncks; x++) {
 		for (int z = -visibleChuncks; z <= visibleChuncks; z++) {
 
 			// create the AABB box
-			Eigen::Vector3f boxMin = Eigen::Vector3f(x * patch_pixel + camX * patch_pixel, 0.0f, z * patch_pixel + camZ * patch_pixel);
-			Eigen::Vector3f boxMax = Eigen::Vector3f((x + 1) * patch_pixel+ camX * patch_pixel, 15.0f, (z + 1) * patch_pixel+ camZ * patch_pixel); // +1 to get to the other corner
+			Eigen::Vector3f boxMin = Eigen::Vector3f((x + camX) * patch_pixel , 0.0f, (z + camZ) * patch_pixel) ;
+			Eigen::Vector3f boxMax = Eigen::Vector3f((x + 1 + camX) * patch_pixel,  15.0f, (z + 1 + camZ) * patch_pixel); // +1 to get to the other corner
 
 			// Frustum Culling Test
 			bool visible = true;
@@ -262,20 +265,26 @@ void Viewer::drawContents()
 			}
 
 			if (visible) {
-				offsets.push_back(Eigen::Vector2f(x * patch_pixel+ camX * patch_pixel, z * patch_pixel+ camZ * patch_pixel));
+				offsets.push_back(Eigen::Vector2f((x + camX) * patch_pixel, (z + camZ) * patch_pixel));
 			}
 
 		}
 	}
 
 	visiblePatches = offsets.size();
+	// Render terrain
+	glEnable(GL_DEPTH_TEST);
+	terrainVAO.bind();
+	terrainShader.bind();
+
+	terrainShader.setUniform("screenSize", Eigen::Vector2f(width(), height()), false);
+	terrainShader.setUniform("mvp", mvp);
+	terrainShader.setUniform("cameraPos", cameraPosition, false);
 
 	offsetBuffer.bind(); // really necessary?
 	offsetBuffer.uploadData(offsets);
 	offsetBuffer.bindToAttribute("offset"); // otherwise the other instances are not rendered, then why do the same in CreateGeometry?
 	
-
-
 	/* Task: Render the terrain */
 
 	// Bind textures to shader
@@ -284,7 +293,7 @@ void Viewer::drawContents()
 	glActiveTexture(GL_TEXTURE0 + Viewer::GRASS_TEXTURE);
 	glBindTexture(GL_TEXTURE_2D, grassTexture);
 	// this 0 refers to texture Channel in the shader 
-	terrainShader.setUniform("background", 0); // provided method only works for integers and not for GLuint
+	terrainShader.setUniform("grassTexture", 0); // provided method only works for integers and not for GLuint
 
 	// texture for the road ontop
 	glActiveTexture(GL_TEXTURE0 + Viewer::ROCK_TEXTURE);
@@ -311,15 +320,27 @@ void Viewer::drawContents()
 	glBindTexture(GL_TEXTURE_2D, alphaMap);
 	terrainShader.setUniform("alphaMap", 5);
 
-
-
+	// background texture for fog
+	// the 8 comes because the texture was generated in Viewer()
+	glActiveTexture(GL_TEXTURE0 + 8);
+	glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+	terrainShader.setUniform("backgroundTexture", 8);
 
 	// Difference between glDrawArrays and glDrawElements
 	// glDrawArrays reads vertices sequentially 
 	// glDrawElements reads vertices according to the indices provided in the index buffer
 	// using the RESTART Index to create strips
 	glEnable(GL_PRIMITIVE_RESTART);
-	glDrawElementsInstanced(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size()); // 1 marks the number of instances
+//		glDrawElementsInstanced(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size()); // offset.size marks the number of instances
+
+	// Render water surface
+	waterVAO.bind();
+	terrainShader.bind();
+
+	// we have to rebind the buffer, because this is a different VAO
+	offsetBuffer.bind();
+	offsetBuffer.bindToAttribute("offset");
+	glDrawElementsInstanced(GL_TRIANGLE_STRIP, waterIndicesBuf.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size() ); 
 
 	
 
