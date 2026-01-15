@@ -119,7 +119,7 @@ void Viewer::CreateGeometry()
 	// Information for water ---> only the height changes, so maybe reuse position from terrain and change height in shader
 	//std::vector<Eigen::Vector4f> waterPositions;
 	//std::vector<uint32_t> waterIndices;
-	//CreateTerrain(waterPositions, waterIndices, 1.5f);
+	//CreateTerrain(waterPositions, waterIndices, 0.0f);
 
 	//terrain VAO	
 	terrainVAO.generate();
@@ -141,7 +141,7 @@ void Viewer::CreateGeometry()
 	waterShader.bind();
 
 	waterPositionsBuf.uploadData(positions).bindToAttribute("waterPosition");
-	waterIndicesBuf.uploadData((uint32_t)positions.size() * sizeof(uint32_t), indices.data());
+	waterIndicesBuf.uploadData((uint32_t)indices.size() * sizeof(uint32_t), indices.data());
 	//offsetBuffer.bindToAttribute("offset");
 	glVertexAttribDivisor(terrainShader.attrib("offset"), 1);  
 
@@ -223,6 +223,10 @@ bool IsBoxCompletelyBehindPlane(const Eigen::Vector3f& boxMin, const Eigen::Vect
 		plane.dot(Eigen::Vector4f(boxMax.x(), boxMax.y(), boxMin.z(), 1)) < 0 &&
 		plane.dot(Eigen::Vector4f(boxMax.x(), boxMax.y(), boxMin.z(), 1)) < 0;
 }
+
+//void calculateVisiblePatches() {
+//
+//}
 
 // wo wird drawContents aufgerufen? (nicht in main.cpp)
 void Viewer::drawContents()
@@ -339,10 +343,14 @@ void Viewer::drawContents()
 	waterVAO.bind();
 	waterShader.bind();
 	waterShader.setUniform("mvp", mvp);
+	waterShader.setUniform("time", glfwGetTime());
+	waterShader.setUniform("cameraPos", cameraPosition, false);
 
 	// we have to rebind the buffer, because this is a different VAO
 	offsetBuffer.bind();
+	offsetBuffer.uploadData(offsets);
 	offsetBuffer.bindToAttribute("offset");
+	glEnable(GL_PRIMITIVE_RESTART);
 	glDrawElementsInstanced(GL_TRIANGLE_STRIP, waterIndicesBuf.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size() ); 
 
 	
