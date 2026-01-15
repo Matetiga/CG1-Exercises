@@ -12,12 +12,13 @@ in vec4 worldPos;
 out vec4 color;
 
 
-uniform sampler2D background;
+uniform sampler2D grassTexture;
 uniform sampler2D rockTexture;
 uniform sampler2D roadColorTexture;
 uniform sampler2D roadSpecularMap;
 uniform sampler2D roadNormalMap;
 uniform sampler2D alphaMap;
+uniform sampler2D backgroundTexture;
 
 uniform vec3 cameraPos;
 uniform vec2 screenSize;
@@ -43,13 +44,35 @@ vec4 getBackgroundColor()
 	
 	float degr = 40.0;
 	float omega = acos(dot(vec3(1.0,0.0,1.0) , normal)); // in radians
+
 	// both conditions make sure the rock Texture is active on every direction,
 	// otherwise (-1, 0, -1) view direction would be only made of grass 
+	vec4 endTexColor ;
 	if(omega < degr*M_PI / 180 ||M_PI - omega < degr*M_PI/180 ) // the angle between the normal and the slope should be greater than 70 degrees
 	{
-		return texture(rockTexture, worldPos.xz / 25.5);
+		endTexColor = texture(rockTexture, worldPos.xz / 25.5);
+	} else{
+		endTexColor = texture(grassTexture, worldPos.xz / 25.5);
 	}
-	return texture(background, worldPos.xz / 25.5);
+
+	return endTexColor;
+	//return mix(backgroundColor, endTexColor, fogFactor);
+}
+
+// this function is taken from learn openGL
+float LinearizeDepth(float depth){
+
+	float z = depth * 2.0 - 1.0; // back to NDC 
+	// clipping planes are defined in Viewer::Viewer
+	float near = 0.1; 
+	float far = 1000.0; 
+	// inverse transformation to get linear depth. Projection Matrix had non-linearized the depth 
+	return (2.0 * near * far) / (far + near - z * (far - near));	
+}
+
+// this should remap the value from one range to another
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
 
 void main()
@@ -76,5 +99,25 @@ void main()
 	mat3 TBN = mat3(normalize(tangent), normalize(binormal), normal);
 	vec3 normal_eye = normalize(TBN * n_tan);
 	
-	color = backgroundColor * calculateLighting(color, specular, normal_eye, dirToViewer);
+
+	// for fog 
+	vec4 background = texture(backgroundTexture, worldPos.xz / 255);
+	float dist = length(cameraPos -worldPos.xyz); 
+	float fogStart = 500.0f; 
+	float fogEnd = 1000.0f;
+
+
+	vec4 endTerrainColor = backgroundColor * calculateLighting(color, specular, normal_eye, dirToViewer);
+	//color = vec4(vec3(depthFragment), 1.0);
+	float depth =1.0- LinearizeDepth(gl_FragCoord.z) / 1000.0; // divide by far plane
+	float fogValue = clamp((gl_FragCoord.z - 500.0)/1000.0, 0.0, 1.0);
+	//depth = map(depth, 0.0, 1.0, 0.0, 1.0);
+	//depth = clamp((depth*1000-fogStart)/(fogEnd), 0.0, 1.0);
+//	color = vec4(endTerrainColor.xyz * depth, 1.0); 
+	color = mix( vec4(0.5, 0.5, 0.5, 1.0), endTerrainColor, depth); 
+	//color = mix(vec4(background.xyz, 1.0), endTerrainColor, depth);
+	//color = vec4(endTerrainColor.xyz, endTerrainColor.w * depth);
+
+	
+
 }
