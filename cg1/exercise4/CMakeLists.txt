@@ -1,6 +1,5 @@
 set(GLSL_FILES	sky.vert sky.frag
-				terrain.vert terrain.frag
-				water.vert, water.frag)
+				terrain.vert terrain.frag water.vert water.frag)
 
 
 ProcessGLSLFiles(GLSL_FILES)

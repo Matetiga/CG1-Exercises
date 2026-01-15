@@ -116,10 +116,10 @@ void Viewer::CreateGeometry()
 	std::vector<uint32_t> indices;
 	CreateTerrain(positions, indices, 0.0f);
 
-	// Information for water
-	std::vector<Eigen::Vector4f> waterPositions;
-	std::vector<uint32_t> waterIndices;
-	CreateTerrain(waterPositions, waterIndices, 5.0f);
+	// Information for water ---> only the height changes, so maybe reuse position from terrain and change height in shader
+	//std::vector<Eigen::Vector4f> waterPositions;
+	//std::vector<uint32_t> waterIndices;
+	//CreateTerrain(waterPositions, waterIndices, 1.5f);
 
 	//terrain VAO	
 	terrainVAO.generate();
@@ -138,10 +138,10 @@ void Viewer::CreateGeometry()
 	// water VAO ---> the same process has to be done for water
 	waterVAO.generate();
 	waterVAO.bind();
-	terrainShader.bind();
+	waterShader.bind();
 
-	waterPositionsBuf.uploadData(waterPositions).bindToAttribute("waterPosition");
-	waterIndicesBuf.uploadData((uint32_t)waterIndices.size() * sizeof(uint32_t), waterIndices.data());
+	waterPositionsBuf.uploadData(positions).bindToAttribute("waterPosition");
+	waterIndicesBuf.uploadData((uint32_t)positions.size() * sizeof(uint32_t), indices.data());
 	//offsetBuffer.bindToAttribute("offset");
 	glVertexAttribDivisor(terrainShader.attrib("offset"), 1);  
 
@@ -331,11 +331,14 @@ void Viewer::drawContents()
 	// glDrawElements reads vertices according to the indices provided in the index buffer
 	// using the RESTART Index to create strips
 	glEnable(GL_PRIMITIVE_RESTART);
-//		glDrawElementsInstanced(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size()); // offset.size marks the number of instances
+	glDrawElementsInstanced(GL_TRIANGLE_STRIP, terrainIndices.bufferSize(), GL_UNSIGNED_INT, 0, offsets.size()); // offset.size marks the number of instances
 
+
+	// TODO : patches of water behind user will be generated, the previous methdod has to be reused
 	// Render water surface
 	waterVAO.bind();
-	terrainShader.bind();
+	waterShader.bind();
+	waterShader.setUniform("mvp", mvp);
 
 	// we have to rebind the buffer, because this is a different VAO
 	offsetBuffer.bind();

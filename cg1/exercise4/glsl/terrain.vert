@@ -4,7 +4,6 @@
 // Copyright (C) CGV TU Dresden - All Rights Reserved
 
 in vec4 position;
-//in vec4 waterPosition;
 in vec2 offset;
 
 uniform mat4 mvp;
