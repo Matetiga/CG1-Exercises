@@ -12,6 +12,7 @@ void main(){
 	vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 	float specularFactor = 74.7f;
 	vec3 lightDirection = vec3(0.0f, 1.0f, 1.0f);
+	vec4 waterColor =vec4(0.1, 0.3, 0.7, 0.7);
 
 	vec3 specDir = normalize(specularLlightPosition - worldPos.xyz);
 	vec3 viewDir = normalize( cameraPos - worldPos.xyz);
@@ -21,5 +22,6 @@ void main(){
 
 	float NdotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
 
-	color = vec4(0.1, 0.3, 0.7, 0.7) * (NdotL * 0.9 + 1.0) + specular * lightColor;
+	vec4 endColor = waterColor * (NdotL * 0.9 + 1.0) + specular * lightColor;
+	color = vec4(endColor.x, endColor.y, endColor.z, 0.5); // to make it a bit transparent
 }

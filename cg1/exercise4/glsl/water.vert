@@ -29,7 +29,7 @@ float calculateHight(vec2 position)
 	float waveFrequency = 0.15f;
 	float waveAmplitude = 1.0f;
 	float waveRotation = 1.28;
-	float waveSpeed = 3.0f;
+	float waveSpeed = 1.0f;
 	int waveNumber = 32;
 	float frequencyDampner = 1.15;
 	float amplitudeDampner = 0.77;
@@ -67,3 +67,4 @@ void main(){
 	float height = calculateHight(waterPosition.xz + offset);	
 	worldPos = vec4(waterPosition.x + offset.x, height, waterPosition.z + offset.y, 1.0);
 	gl_Position =  mvp * worldPos;
+}

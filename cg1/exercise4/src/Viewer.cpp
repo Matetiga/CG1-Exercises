@@ -326,9 +326,9 @@ void Viewer::drawContents()
 
 	// background texture for fog
 	// the 8 comes because the texture was generated in Viewer()
-	glActiveTexture(GL_TEXTURE0 + 8);
-	glBindTexture(GL_TEXTURE_2D, backgroundTexture);
-	terrainShader.setUniform("backgroundTexture", 8);
+	// glActiveTexture(GL_TEXTURE0 + 8);
+	// glBindTexture(GL_TEXTURE_2D, backgroundTexture);
+	// terrainShader.setUniform("backgroundTexture", 8);
 
 	// Difference between glDrawArrays and glDrawElements
 	// glDrawArrays reads vertices sequentially 
