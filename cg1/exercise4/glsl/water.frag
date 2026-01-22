@@ -20,7 +20,7 @@ void main(){
 	float specAngle = max(dot(halfwayVec, normal), 0.0);
 	float specular = pow(specAngle, specularFactor);
 
-	float NdotL = clamp(dot(normal, lightDirection), 0.0, 1.0);
+	float NdotL = clamp(dot(normal, specularLlightPosition), 0.0, 1.0); //diffuse lighting
 
 	vec4 endColor = waterColor * (NdotL * 0.9 + 1.0) + specular * lightColor;
 	color = vec4(endColor.x, endColor.y, endColor.z, 0.5); // to make it a bit transparent

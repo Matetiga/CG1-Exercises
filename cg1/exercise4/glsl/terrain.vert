@@ -19,7 +19,8 @@ float getTerrainHeight(vec2 p);
 
 void main()
 {
-	float currentHeight = getTerrainHeight(position.xz + offset.xy);
+	// float currentHeight = getTerrainHeight(position.xz + offset.xy);
+	float currentHeight = getTerrainHeight(position.xz );
 	worldPos = vec4(position.x + offset.x, currentHeight, position.z + offset.y, 1.0);
 	gl_Position = mvp * worldPos;
 
