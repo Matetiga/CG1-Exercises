@@ -92,12 +92,24 @@ bool LineSegment::Overlaps(const Box& b) const
 				   
 }
 
-//returns the point with smallest distance topoint p which lies on the line segment
+//returns the point with smallest distance to point p which lies on the line segment
 Eigen::Vector3f LineSegment::ClosestPoint(const Eigen::Vector3f& p) const
 {
 	//the two endpoints of the line segment are v0,v1
 	/* Task 5.2.1 */
-	return Eigen::Vector3f(0,0,0);
+	Eigen::Vector3f line = v1- v0;
+	float projectionScalar = (dot(p ,line))/(dot(line,line)); // this is the point projected onto the line
+
+	// however this projection will be along the infinite line defined by v0 and v1
+	if(projectionScalar < 0.0f)
+		return v0; // closest to v0
+	if(projectionScalar > 1.0f)
+		return v1; // closest to v1
+
+	Eigen::Vector3f projection = v0 + projectionScalar * line; // we have to add v0 to get the actual position
+	// otherwise "projection" would be on the infinite line space
+
+	return projection;
 }
 
 //returns the squared distance between point p and the line segment
