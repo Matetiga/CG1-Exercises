@@ -17,6 +17,9 @@ class GridTraverser
 	Eigen::Vector3i current;
 
 	/* you can additional attributes for incremental calculation here */
+	Eigen::Vector3i step; //+1/-1/0 pro achse
+	Eigen::Vector3f tMax; // next boundary cross t per axis
+	Eigen::Vector3f tDelta; // t step per cell per axis
 
 public:
 	//default constructor
