@@ -12,6 +12,14 @@
 class Viewer : public nse::gui::AbstractViewer
 {
 public:
+	enum textureIndex {
+		GRASS_TEXTURE = 0,
+		ROCK_TEXTURE = 1,
+		ROAD_COLOR_TEXTURE = 2,
+		ROAD_SPECULAR_MAP = 3,
+		ROAD_NORMAL_MAP = 4,
+		ALPHA_MAP = 5
+	};
 	Viewer();
 
 	void LoadShaders();
@@ -31,9 +39,13 @@ private:
 	nse::gui::GLVertexArray emptyVAO;
 
 	nse::gui::GLShader terrainShader;
+	nse::gui::GLShader waterShader;
 	nse::gui::GLVertexArray terrainVAO;
+	nse::gui::GLVertexArray waterVAO;
 	nse::gui::GLBuffer terrainPositions;
 	nse::gui::GLBuffer terrainIndices;
+	nse::gui::GLBuffer waterPositionsBuf;
+	nse::gui::GLBuffer waterIndicesBuf;
 
 	GLuint grassTexture, rockTexture, roadColorTexture, roadNormalMap, roadSpecularMap, alphaMap;
 	GLuint backgroundFBO, backgroundTexture;
