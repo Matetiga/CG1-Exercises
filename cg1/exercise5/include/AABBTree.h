@@ -419,7 +419,7 @@ public:
 	//		res.consider(p, dist(x,p));
 	//}
 	void considerPath(const AABBNode* node, const Eigen::Vector3f& queryPoint,
-			std::priority_queue<SearchEntry, std::vector<SearchEntry>, std::greater<SearchEntry>>& Qmin,
+			std::priority_queue<SearchEntry>& Qmin,
 			size_t k, std::priority_queue<ResultEntry>& result_queue) const{
 		
 		const AABBNode* currentNode = node;
@@ -427,12 +427,18 @@ public:
 			const AABBSplitNode* splitNode = static_cast<const AABBSplitNode*>(currentNode);
 			float distanceLeft = splitNode->Left()->GetBounds().SqrDistance(queryPoint); // because Left() returns a pointer to AABBNode
 			float distanceRight = splitNode->Right()->GetBounds().SqrDistance(queryPoint);
+			
+			float currentMaxDist = (result_queue.size()==k) ? result_queue.top().sqrDistance : std::numeric_limits<float>::infinity();
 
 			if(distanceLeft < distanceRight){
-				Qmin.push(SearchEntry(distanceRight, splitNode->Right()));
+				if(distanceRight< currentMaxDist){
+					Qmin.push(SearchEntry(distanceRight, splitNode->Right()));
+				}
 				currentNode = splitNode->Left();
 			}else{
-				Qmin.push(SearchEntry(distanceLeft, splitNode->Left()));
+				if(distanceLeft< currentMaxDist){
+					Qmin.push(SearchEntry(distanceLeft, splitNode->Left()));
+				}
 				currentNode = splitNode->Right();
 			}
 		}
@@ -452,8 +458,7 @@ public:
 	std::vector<ResultEntry> ClosestKPrimitives(size_t k,const Eigen::Vector3f& q) const
 	{
 		//student begin
-		// instead of having the first element as teh furthest, th closest will be
-		std::priority_queue<SearchEntry, std::vector<SearchEntry>, std::greater<SearchEntry>> k_best;
+		std::priority_queue<SearchEntry> k_best; // the < operator for Search entry is defined otherwise
 		std::priority_queue<ResultEntry> result_queue;
 		//start with the root node 
 		considerPath(Root(), q, k_best, k, result_queue);
