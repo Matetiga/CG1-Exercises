@@ -382,12 +382,98 @@ public:
 		return result;
 
 	}
+
+	// consider method checks the distance between two primitives
+	// if the primitive in the priority list is further away, then remove it and insert the closer one
+	// if k neighbors have not yet been found, then instert the primitive
+	void consider(ResultEntry compare,size_t k, std::priority_queue<ResultEntry>& result_queue) const {
+		if (result_queue.size() == k){
+			if(result_queue.top() < compare) return;   
+			result_queue.pop(); // remove the furthest
+		}
+		result_queue.push(compare);
+	}
+
+	// the use of this method is to traverse all "useful" nodes (nodes that are close and could contain close primitives to the point) other nodes will be skipped
+	// ConsiderPath(N n, X x,Qmin,res) method 
+	// x being the query point
+	// n being the current node (bounding box)
+	// Qmin being the current minimum distance found so far which is a priority queue
+	// res being the current best result entry found so far
+	// while(n is not leaf){
+	//   compute distance from x to the bounding boxes of the child nodes
+	//   d_l = distance to left child bounding box (this is a signed distance) ---> maybe Distance method calculates this 
+	//   or check SqrDistance method
+	//  d_r = distance to right child bounding box
+	// 
+	// if the left distance is shorter, then procede with the left child and store the right one, if not, otherwise
+	//  if (d_l < d_r){
+	// 		then insert right child into priority queue with distance d_r
+	//      n = left child
+	//  } else {
+	//      insert left child into priority queue with distance d_l
+	//      n = right child
+	//  }
+	// for each primitive p in the leaf node n do:
+	// 	    P p = n.primitive(i);
+	//		res.consider(p, dist(x,p));
+	//}
+	void considerPath(const AABBNode* node, const Eigen::Vector3f& queryPoint,
+			std::priority_queue<SearchEntry, std::vector<SearchEntry>, std::greater<SearchEntry>>& Qmin,
+			size_t k, std::priority_queue<ResultEntry>& result_queue) const{
+		
+		const AABBNode* currentNode = node;
+		while(!currentNode->IsLeaf()){
+			const AABBSplitNode* splitNode = static_cast<const AABBSplitNode*>(currentNode);
+			float distanceLeft = splitNode->Left()->GetBounds().SqrDistance(queryPoint); // because Left() returns a pointer to AABBNode
+			float distanceRight = splitNode->Right()->GetBounds().SqrDistance(queryPoint);
+
+			if(distanceLeft < distanceRight){
+				Qmin.push(SearchEntry(distanceRight, splitNode->Right()));
+				currentNode = splitNode->Left();
+			}else{
+				Qmin.push(SearchEntry(distanceLeft, splitNode->Left()));
+				currentNode = splitNode->Right();
+			}
+		}
+
+		// now currentNode will be a leaf
+		const AABBLeafNode* leafNode = static_cast<const AABBLeafNode*>(currentNode);
+		for(int i = 0; i < leafNode->NumPrimitives(); i++){
+			// does it need to be a pointer --> yes because begin() returns an iterator (then is a pointer to vector's beginning)
+			const Primitive& primitive = *(leafNode->begin() + i); // this will jump to the ith primitive in the leaf node
+			ResultEntry considerRes = ResultEntry(primitive.SqrDistance(queryPoint), &primitive);
+			consider(considerRes, k, result_queue);
+		}
+	}
+
 	
 	//closest k primitive computation 
 	std::vector<ResultEntry> ClosestKPrimitives(size_t k,const Eigen::Vector3f& q) const
 	{
 		//student begin
-		return ClosestKPrimitivesLinearSearch(k,q);
+		// instead of having the first element as teh furthest, th closest will be
+		std::priority_queue<SearchEntry, std::vector<SearchEntry>, std::greater<SearchEntry>> k_best;
+		std::priority_queue<ResultEntry> result_queue;
+		//start with the root node 
+		considerPath(Root(), q, k_best, k, result_queue);
+		while(!k_best.empty()){
+			SearchEntry currentNode = k_best.top();
+			k_best.pop();
+			if (currentNode.sqrDistance >= result_queue.top().sqrDistance && result_queue.size() == k) 
+				break; // no need to consider this node anymore	
+			considerPath(currentNode.node, q, k_best, k, result_queue);
+		}
+		
+		// Convert priority queue to vector
+		std::vector<ResultEntry> result;
+		while(!result_queue.empty()) {
+			result.push_back(result_queue.top());
+			result_queue.pop();
+		}
+		// because the first element would have been the furthest
+    	std::reverse(result.begin(), result.end());
+		return result;
 		//student end
 	}
 	
@@ -398,7 +484,13 @@ public:
 		if(root == nullptr)
 			return ResultEntry();
 		/* Task 5.2.1 */
-		return ClosestPrimitiveLinearSearch(q);	
+		// TODO: 
+		// 1. Implement a K nearest search using the AABB tree (use the method ClosestKPrimitives())
+		// Use the struct ResultEntry to store the result
+		// std::priority_queue is a list where the largest element is always on top
+		size_t k= 1;
+		std::vector<ResultEntry> nearestPrims = ClosestKPrimitives(k,q);
+		return nearestPrims[0];
 	}
 
 	//return the closest point position on the closest primitive in the tree with respect to the query point q
